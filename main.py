@@ -5,51 +5,71 @@ import time
 import signal
 from multiprocessing import Pipe, Process, Event 
 
-from src.utils.remoteControlReceiver        import RemoteControlReceiver
-from src.utils.cameraStreamer               import CameraStreamer
-from src.utils.cameraSpoofer                import CameraSpoofer
-from src.hardware.camera                    import CameraProcess
-from src.nucleoInterface.nucleoInterface    import NucleoInterface
+from src.utils.remoteControlReceiver                import RemoteControlReceiver
+from src.utils.cameraStreamer                       import CameraStreamer
+from src.utils.cameraSpoofer                        import CameraSpoofer
+from src.utils.cameraSpoofer                        import CameraSpoofer
+from src.utils.perceptionVisualizer                 import PerceptionVisualizer
+from src.hardware.camera                            import CameraProcess
+from src.hardware.nucleoInterface                   import NucleoInterface
+from src.control.autonomousController               import AutonomousController
+from src.perception.laneDetection.laneDetector      import LaneDetector
+from src.perception.objectDetection.objectDetector  import ObjectDetector
 
 # =============================== CONFIG =================================================
 enableStream        =  True
 enableCameraSpoof   =  False 
 enableRc            =  True
-#================================ PIPES ==================================================
+enableVisualization =  True
 
+#================================ PIPES ==================================================
+laneR,  laneS   = Pipe(duplex = False)  # lane detection data
+objR,   objS    = Pipe(duplex = False)  # object detection data
+camR,   camS    = Pipe(duplex = False)  # video frame stream (from real/spoof camera)
+nucR,   nucS    = Pipe(duplex = False)  # Nucleo commands (from autonomous/remote controller)
 
 #================================ PROCESSES ==============================================
 allProcesses = list()
 
-# =============================== HARDWARE PROCC =========================================
-# ------------------- camera + streamer ----------------------
-if enableStream:
-    camStR, camStS = Pipe(duplex = False)           # camera  ->  streamer
+# =============================== CAMERA =================================================
+if enableStream: # set up stream
 
-    if enableCameraSpoof:
-        camSpoofer = CameraSpoofer([],[camStS],'vid')
-        allProcesses.append(camSpoofer)
+    if enableCameraSpoof: # use spoof camera
+        camProc = CameraSpoofer([],[camS],'vid')
+    else:                 # use real camera
+        camProc = CameraProcess([],[camS])
+    allProcesses.append(camProc)
 
+    if enableVisualization:
+        # set up intermediary process to visualize lane and object detection
+        visR, visS = Pipe(duplex = False)
+        visProc = PerceptionVisualizer([camR, laneR, objR], [visS])
+        allProcesses.append(visProc)
+        streamProc = CameraStreamer([visR], [])
     else:
-        camProc = CameraProcess([],[camStS])
-        allProcesses.append(camProc)
-
-    streamProc = CameraStreamer([camStR], [])
+        # pipe camera feed directly to the streamer
+        streamProc = CameraStreamer([camR], [])
     allProcesses.append(streamProc)
 
+# =============================== PERCEPTION =============================================
+# -------- Lane Detection -----------
+laneProc = LaneDetector([camR], [laneS])
+allProcesses.append(laneProc)
+# -------- Object Detection ---------
+objProc = ObjectDetector([camR], [objS])
+allProcesses.append(objProc)
 
+# =============================== CONTROL ================================================
+if enableRc: # use romote controller
+    conProc = RemoteControlReceiver([],[nucS])
+else:        # use autonomous controller
+    conProc = AutonomousController([laneR, objR],[nucS])
+allProcesses.append(conProc)
 
-# ===================================== CONTROL ==========================================
-#------------------- remote controller -----------------------
-if enableRc:
-    rcShR, rcShS   = Pipe(duplex = False)           # rc      ->  serial handler
+nucProc = NucleoInterface([nucR], [])
+allProcesses.append(nucProc)
 
-    # serial handler process
-    shProc = NucleoInterface([rcShR], [])
-    allProcesses.append(shProc)
-
-    rcProc = RemoteControlReceiver([],[rcShS])
-    allProcesses.append(rcProc)
+# ========================================================================================
 
 print("Starting the processes!",allProcesses)
 for proc in allProcesses:
