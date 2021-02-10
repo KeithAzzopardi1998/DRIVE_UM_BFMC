@@ -103,5 +103,3 @@ class CameraStreamer(WorkerProcess):
                 self.connection = None
                 self._init_socket()
                 pass
-
--
