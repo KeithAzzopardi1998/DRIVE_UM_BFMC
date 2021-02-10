@@ -85,9 +85,6 @@ class CameraStreamer(WorkerProcess):
             try:
                 print("LOG: fetching image")
                 stamps, image = inP.recv()
-                #print("LOG: image shape before processing",image.shape)
-                #image=process_image(image)
-                #print("LOG: image shape after processing",image.shape)
                 result, image = cv2.imencode('.jpg', image, encode_param)
                 data   =  image.tobytes()
                 size   =  len(data)
