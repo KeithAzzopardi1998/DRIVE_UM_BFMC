@@ -3,6 +3,7 @@ import socket
 import cv2
 from threading       import Thread
 import numpy as np
+import time
 
 from src.utils.templates.workerProcess import WorkerProcess
 
@@ -24,6 +25,8 @@ class PerceptionVisualizer(WorkerProcess):
         super(PerceptionVisualizer,self).__init__(inPs, outPs)
 
         self.imgSize    = (480,640,3)
+        self.height, self.width, self.channels = self.imgSize
+
         self.LABEL_DICT = {0: 'bike',
                 1: 'bus',
                 2: 'car',
@@ -66,22 +69,104 @@ class PerceptionVisualizer(WorkerProcess):
             try:
                 #  ----- read the input streams ---------- 
                 stamps, image_in = inPs[0].recv()
-                _ = inPs[1].recv()
+                left, right = inPs[1].recv() # every packet received should be a list with the left and right lane info
                 objects = inPs[2].recv()
 
                 # ----- draw the lane lines --------------
+                image_ld = self.getImage_ld(image_in, left, right) 
 
                 # ----- draw the object bounding boxes ---
                 image_od = self.getImage_od(image_in, objects)
+
+                # ----- we can add another frame here ----
+                image_xy = image_in
+
                 # ----- combine the images ---------------
+                image_in_resized = cv2.resize(image_in,(int(self.width/2),int(self.height/2)))
+                image_xy_resized = cv2.resize(image_xy,(int(self.width/2),int(self.height/2)))
+                image_ld_resized = cv2.resize(image_ld,(int(self.width/2),int(self.height/2)))
+                image_od_resized = cv2.resize(image_od,(int(self.width/2),int(self.height/2)))
+                
+                image_out = np.vstack((
+                    np.hstack((image_in_resized,image_ld_resized)),
+                    np.hstack((image_od_resized,image_xy_resized))
+                ))
+
+                # https://docs.opencv.org/3.1.0/dc/da5/tutorial_py_drawing_functions.html
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                cv2.putText(image_out,'Raw',       (0,int(self.height*0.49)),                     font,1,(255,255,255),2,cv2.LINE_AA)
+                cv2.putText(image_out,'Lanes',     (int(self.width*0.5),int(self.height*0.49)),   font,1,(255,255,255),2,cv2.LINE_AA)
+                cv2.putText(image_out,'Objects',   (0,int(self.height*0.99)),                     font,1,(255,255,255),2,cv2.LINE_AA)
+                cv2.putText(image_out,'Other',     (int(self.width*0.5),int(self.height*0.99)),   font,1,(255,255,255),2,cv2.LINE_AA)
 
                 # ----- write to the output stream -------
+                assert image_out.shape == self.imgSize
+                stamp = time.time()
+                for outP in self.outPs:
+                    outP.send([[stamp], image_out])                
+
 
             except Exception as e:
                 print("PerceptionVisualizer failed to process image:",e,"\n")
                 pass       
 
-    # ===================================== OBJECT DETECTION ===============================             
+    # ===================================== LANE DETECTION ===============================
+    def get_vertices_for_img(self,img):
+        img_shape = img.shape
+        height = img_shape[0]
+        width = img_shape[1]
+
+        region_top_left     = (0.00*width, 0.50*height)
+        region_top_right    = (1.00*width, 0.50*height)
+        region_bottom_left  = (0.00*width, 1.00*height)
+        region_bottom_right = (1.00*width, 1.00*height)
+
+        vert = np.array([[region_bottom_left , region_top_left, region_top_right, region_bottom_right]], dtype=np.int32)
+        return vert
+    
+    def draw_lines(self,img, lines, color=[255, 0, 0], thickness=10, make_copy=True):
+        # Copy the passed image
+        img_copy = np.copy(img) if make_copy else img
+        
+        for line in lines:
+            for x1,y1,x2,y2 in line:
+                cv2.line(img_copy, (x1, y1), (x2, y2), color, thickness)
+        
+        return img_copy
+        
+    def trace_lane_line_with_coefficients(self,img, line_coefficients, top_y, make_copy=True):
+        A = line_coefficients[0]
+        b = line_coefficients[1]
+        #TODO added this part
+        if A==0.0 and b==0.0:
+            img_copy = np.copy(img) if make_copy else img
+            return img_copy
+        
+        img_shape = img.shape
+        bottom_y = img_shape[0] - 1
+        # y = Ax + b, therefore x = (y - b) / A
+        x_to_bottom_y = (bottom_y - b) / A
+        
+        top_x_to_y = (top_y - b) / A 
+        
+        new_lines = [[[int(x_to_bottom_y), int(bottom_y), int(top_x_to_y), int(top_y)]]]
+        return draw_lines(img, new_lines, make_copy=make_copy)
+
+    def getImage_ld(self,image_in,left_coefficients,right_coefficients):
+        img = image_in.copy()
+        vert = get_vertices_for_img(img)
+        region_top_left = vert[0][1]
+        
+        lane_img_left = trace_lane_line_with_coefficients(img, left_coefficients, region_top_left[1], make_copy=True)
+        lane_img_both = trace_lane_line_with_coefficients(lane_img_left, right_coefficients, region_top_left[1], make_copy=False)
+        
+        # image1 * α + image2 * β + λ
+        # image1 and image2 must be the same shape.
+        img_with_lane_weight =  cv2.addWeighted(img, 0.7, lane_img_both, 0.3, 0.0)
+        
+        return img_with_lane_weight        
+
+    # ===================================== OBJECT DETECTION =============================
     def getImage_od(self, img_in, object_list):
         original_numpy = np.copy(img_in)
         for obj in object_list:
