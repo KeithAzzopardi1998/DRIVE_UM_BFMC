@@ -1,5 +1,6 @@
 import numpy as np 
 import cv2 
+import time
 import math
 from threading import Thread
 from collections import deque
@@ -80,4 +81,35 @@ class LaneDetector(WorkerProcess):
 			smoothed_right_lane_coefficients = pp.determine_line_coefficients(right_lane_coefficients, [0.0, 0.0])
 
 			return np.array([smoothed_left_lane_coefficients, smoothed_right_lane_coefficients])
+
+ 	def _the_thread(self, inPs, outPs):
+ 		"""Read the image from input stream, process it and send lane information
+        
+        Parameters
+        ----------
+        inPs : list(Pipe)
+            0 - video frames
+        outPs : list(Pipe) 
+            0 - array of left and right lane information
+        """
+
+        while True:
+            try:
+                #  ----- read the input streams ---------- 
+                stamps, image_in = inPs[0].recv()
+
+                # proncess input frame and return array [left lane coeffs, right lane coeffs]
+                lanes_coefficients = self.laneDetection(image_in)
+
+                stamp = time.time()
+                for outP in self.outPs:
+                    outP.send([[stamp], lanes_coefficients])
+
+            except Exception as e:
+            	print("LaneDetector failed to obtain lanes:",e,"\n")
+                pass
+                
+
+
+
 
