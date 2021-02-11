@@ -72,12 +72,12 @@ class LaneDetector(WorkerProcess):
 			smoothed_left_lane_coefficients = pp.determine_line_coefficients(left_lane_coefficients, [left_lane_slope, left_intercept])
 			smoothed_right_lane_coefficients = pp.determine_line_coefficients(right_lane_coefficients, [right_lane_slope, right_intercept])
 
-			return smoothed_left_lane_coefficients, smoothed_right_lane_coefficients
+			return np.array([smoothed_left_lane_coefficients, smoothed_right_lane_coefficients])
 
 		except Exception as e:
 			#print("*** Error - will use saved coefficients ", e)
 			smoothed_left_lane_coefficients = pp.determine_line_coefficients(left_lane_coefficients, [0.0, 0.0])
 			smoothed_right_lane_coefficients = pp.determine_line_coefficients(right_lane_coefficients, [0.0, 0.0])
 
-			return smoothed_left_lane_coefficients, smoothed_right_lane_coefficients
+			return np.array([smoothed_left_lane_coefficients, smoothed_right_lane_coefficients])
 
