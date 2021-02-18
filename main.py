@@ -10,11 +10,11 @@ from src.utils.cameraStreamer                       import CameraStreamer
 from src.utils.cameraSpoofer                        import CameraSpoofer
 from src.utils.cameraSpoofer                        import CameraSpoofer
 from src.utils.perceptionVisualizer                 import PerceptionVisualizer
-from src.hardware.camera                            import CameraProcess
-from src.hardware.nucleoInterface                   import NucleoInterface
-from src.control.autonomousController               import AutonomousController
-from src.perception.laneDetection.laneDetector      import LaneDetector
-from src.perception.objectDetection.objectDetector  import ObjectDetector
+from src.hardware.camera.cameraProcess              import CameraProcess
+from src.hardware.nucleoInterface.nucleoInterface   import NucleoInterface
+#from src.control.autonomousController               import AutonomousController
+#from src.perception.laneDetection.laneDetector      import LaneDetector
+#from src.perception.objectDetection.objectDetector  import ObjectDetector
 
 # =============================== CONFIG =================================================
 enableStream        =  True
@@ -53,11 +53,11 @@ if enableStream: # set up stream
 
 # =============================== PERCEPTION =============================================
 # -------- Lane Detection -----------
-laneProc = LaneDetector([camR], [laneS])
-allProcesses.append(laneProc)
+#laneProc = LaneDetector([camR], [laneS])
+#allProcesses.append(laneProc)
 # -------- Object Detection ---------
-objProc = ObjectDetector([camR], [objS])
-allProcesses.append(objProc)
+#objProc = ObjectDetector([camR], [objS])
+#allProcesses.append(objProc)
 
 # =============================== CONTROL ================================================
 if enableRc: # use romote controller
