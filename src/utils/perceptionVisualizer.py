@@ -9,7 +9,7 @@ from src.utils.templates.workerProcess import WorkerProcess
 
 class PerceptionVisualizer(WorkerProcess):
     # ===================================== INIT =========================================
-    def __init__(self, inPs, outPs):
+    def __init__(self, inPs, outPs, activate_ld=False, activate_od=False):
         """Accepts frames from the camera, visualizes the results from the lane
         and object detection algorithms, and transmits a frame of the same size
 
@@ -26,7 +26,8 @@ class PerceptionVisualizer(WorkerProcess):
 
         self.imgSize    = (480,640,3)
         self.height, self.width, self.channels = self.imgSize
-
+        self.activate_ld = activate_ld
+        self.activate_od = activate_od
         self.LABEL_DICT = {0: 'bike',
                 1: 'bus',
                 2: 'car',
@@ -49,10 +50,10 @@ class PerceptionVisualizer(WorkerProcess):
     def _init_threads(self):
         """Initialize the read thread to receive the video.
         """
-        readTh = Thread(name = 'ProcessStream',target = self._process_stream, args = (self.inPs,self.outPs, ))
+        readTh = Thread(name = 'ProcessStream',target = self._process_stream, args = (self.inPs,self.outPs,self.activate_ld,self.activate_od, ))
         self.threads.append(readTh)    
 
-    def _process_stream(self, inPs, outPs):
+    def _process_stream(self, inPs, outPs, activate_ld, activate_od):
         """Read the image from input stream, process it and send it
         over the output stream
         
@@ -69,14 +70,15 @@ class PerceptionVisualizer(WorkerProcess):
             try:
                 #  ----- read the input streams ---------- 
                 stamps, image_in = inPs[0].recv()
-                left, right = inPs[1].recv() # every packet received should be a list with the left and right lane info
-                objects = inPs[2].recv()
+                #print("LOG: received image")
+                if activate_ld: left, right = inPs[1].recv() # every packet received should be a list with the left and right lane info
+                if activate_od: objects = inPs[2].recv()
 
                 # ----- draw the lane lines --------------
-                image_ld = self.getImage_ld(image_in, left, right) 
+                image_ld = self.getImage_ld(image_in, left, right) if activate_ld else image_in
 
                 # ----- draw the object bounding boxes ---
-                image_od = self.getImage_od(image_in, objects)
+                image_od = self.getImage_od(image_in, objects) if activate_od else image_in
 
                 # ----- we can add another frame here ----
                 image_xy = image_in
