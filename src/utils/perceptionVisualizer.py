@@ -19,7 +19,7 @@ class PerceptionVisualizer(WorkerProcess):
             0 - video frames
             1 - detected lanes
             2 - detected objects
-        outPs : list(Pipe) 
+        outPs : list(Pipe)
             List of output pipes (order does not matter)
         """
         super(PerceptionVisualizer,self).__init__(inPs, outPs)
@@ -40,35 +40,35 @@ class PerceptionVisualizer(WorkerProcess):
                 9: 'truck'
             }
         self.COLORS = np.random.randint(0, 255, size=(len(self.LABEL_DICT), 3), dtype="uint8")
-        
+
     # ===================================== RUN ==========================================
     def run(self):
         """ start the threads"""
         super(PerceptionVisualizer,self).run()
-    
+
     # ===================================== INIT THREADS =================================
     def _init_threads(self):
         """Initialize the read thread to receive the video.
         """
-        readTh = Thread(name = 'ProcessStream',target = self._process_stream, args = (self.inPs,self.outPs,self.activate_ld,self.activate_od, ))
-        self.threads.append(readTh)    
+        readTh = Thread(name = 'ProcessStream', target = self._process_stream, args = (self.inPs, self.outPs, self.activate_ld, self.activate_od, ))
+        self.threads.append(readTh)
 
     def _process_stream(self, inPs, outPs, activate_ld, activate_od):
         """Read the image from input stream, process it and send it
         over the output stream
-        
+
         Parameters
         ----------
         inPs : list(Pipe)
             0 - video frames
             1 - detected lanes
             2 - detected objects
-        outPs : list(Pipe) 
+        outPs : list(Pipe)
             List of output pipes (order does not matter)
         """
         while True:
             try:
-                #  ----- read the input streams ---------- 
+                #  ----- read the input streams ----------
                 stamps, image_in = inPs[0].recv()
                 #print("LOG: received image")
                 if activate_ld: left, right = inPs[1].recv() # every packet received should be a list with the left and right lane info
@@ -88,7 +88,7 @@ class PerceptionVisualizer(WorkerProcess):
                 image_xy_resized = cv2.resize(image_xy,(int(self.width/2),int(self.height/2)))
                 image_ld_resized = cv2.resize(image_ld,(int(self.width/2),int(self.height/2)))
                 image_od_resized = cv2.resize(image_od,(int(self.width/2),int(self.height/2)))
-                
+
                 image_out = np.vstack((
                     np.hstack((image_in_resized,image_ld_resized)),
                     np.hstack((image_od_resized,image_xy_resized))
@@ -107,12 +107,12 @@ class PerceptionVisualizer(WorkerProcess):
                 assert image_out.shape == self.imgSize
                 stamp = time.time()
                 for outP in self.outPs:
-                    outP.send([[stamp], image_out])                
+                    outP.send([[stamp], image_out])
 
 
             except Exception as e:
                 print("PerceptionVisualizer failed to process image:",e,"\n")
-                pass       
+                pass
 
     # ===================================== LANE DETECTION ===============================
     def get_vertices_for_img(self,img):
@@ -127,48 +127,48 @@ class PerceptionVisualizer(WorkerProcess):
 
         vert = np.array([[region_bottom_left , region_top_left, region_top_right, region_bottom_right]], dtype=np.int32)
         return vert
-    
-    def draw_lines(self,img, lines, color=[255, 0, 0], thickness=10, make_copy=True):
+
+    def draw_lines(self, img, lines, color=[255, 0, 0], thickness=10, make_copy=True):
         # Copy the passed image
         img_copy = np.copy(img) if make_copy else img
-        
+
         for line in lines:
             for x1,y1,x2,y2 in line:
                 cv2.line(img_copy, (x1, y1), (x2, y2), color, thickness)
-        
+
         return img_copy
-        
-    def trace_lane_line_with_coefficients(self,img, line_coefficients, top_y, make_copy=True):
+
+    def trace_lane_line_with_coefficients(self, img, line_coefficients, top_y, make_copy=True):
         A = line_coefficients[0]
         b = line_coefficients[1]
         #TODO added this part
         if A==0.0 and b==0.0:
             img_copy = np.copy(img) if make_copy else img
             return img_copy
-        
+
         img_shape = img.shape
         bottom_y = img_shape[0] - 1
         # y = Ax + b, therefore x = (y - b) / A
         x_to_bottom_y = (bottom_y - b) / A
-        
-        top_x_to_y = (top_y - b) / A 
-        
-        new_lines = [[[int(x_to_bottom_y), int(bottom_y), int(top_x_to_y), int(top_y)]]]
-        return draw_lines(img, new_lines, make_copy=make_copy)
 
-    def getImage_ld(self,image_in,left_coefficients,right_coefficients):
+        top_x_to_y = (top_y - b) / A
+
+        new_lines = [[[int(x_to_bottom_y), int(bottom_y), int(top_x_to_y), int(top_y)]]]
+        return self.draw_lines(img, new_lines, make_copy=make_copy)
+
+    def getImage_ld(self, image_in,left_coefficients,right_coefficients):
         img = image_in.copy()
-        vert = get_vertices_for_img(img)
+        vert = self.get_vertices_for_img(img)
         region_top_left = vert[0][1]
-        
-        lane_img_left = trace_lane_line_with_coefficients(img, left_coefficients, region_top_left[1], make_copy=True)
-        lane_img_both = trace_lane_line_with_coefficients(lane_img_left, right_coefficients, region_top_left[1], make_copy=False)
-        
+
+        lane_img_left = self.trace_lane_line_with_coefficients(img, left_coefficients, region_top_left[1], make_copy=True)
+        lane_img_both = self.trace_lane_line_with_coefficients(lane_img_left, right_coefficients, region_top_left[1], make_copy=False)
+
         # image1 * α + image2 * β + λ
         # image1 and image2 must be the same shape.
         img_with_lane_weight =  cv2.addWeighted(img, 0.7, lane_img_both, 0.3, 0.0)
-        
-        return img_with_lane_weight        
+
+        return img_with_lane_weight
 
     # ===================================== OBJECT DETECTION =============================
     def getImage_od(self, img_in, object_list):
@@ -191,7 +191,7 @@ class PerceptionVisualizer(WorkerProcess):
 
             # draw the bounding box and label on the image
             color = [int(c) for c in self.COLORS[idx]]
-            cv2.rectangle(original_numpy, (xmin, ymin), (xmax, ymax), 
+            cv2.rectangle(original_numpy, (xmin, ymin), (xmax, ymax),
                         color, 2)
             y = ymin - 15 if ymin - 15 > 15 else ymin + 15
             label = "{}: {:.2f}%".format(self.LABEL_DICT[obj['class_id']],
@@ -200,4 +200,4 @@ class PerceptionVisualizer(WorkerProcess):
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
         img_out = (original_numpy * 255).astype(np.uint8)
-        return img_out    
+        return img_out
