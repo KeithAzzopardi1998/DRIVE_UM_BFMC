@@ -83,19 +83,19 @@ class CameraStreamer(WorkerProcess):
         while True:
             time.sleep(0.05)
             try:
-                print("LOG: fetching image")
+                #print("LOG: fetching image")
                 stamps, image = inP.recv()
-                print("LOG: image shape before processing",image.shape)
-                image=process_image(image)
-                print("LOG: image shape after processing",image.shape)
+                #print("LOG: got something from the input pipe ... image variable is of type",type(image))
                 result, image = cv2.imencode('.jpg', image, encode_param)
+                #print("LOG: finished encoding the image")
                 data   =  image.tobytes()
+                #print("LOG: finshed converting image to byte stream")
                 size   =  len(data)
-                print("LOG: packaged image into packet of size %d ... going to transmit"%size)
+                #print("LOG: packaged image into packet of size %d ... going to transmit"%size)
 
                 self.connection.write(struct.pack("<L",size))
                 self.connection.write(data)
-                print("LOG: successfully transmitted frame")
+                #print("LOG: successfully transmitted frame")
 
             except Exception as e:
                 print("CameraStreamer failed to stream images:",e,"\n")
