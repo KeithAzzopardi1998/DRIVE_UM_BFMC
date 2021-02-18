@@ -43,7 +43,7 @@ if enableStream: # set up stream
     if enableVisualization:
         # set up intermediary process to visualize lane and object detection
         visR, visS = Pipe(duplex = False)
-        visProc = PerceptionVisualizer([camR, laneR, objR], [visS])
+        visProc = PerceptionVisualizer([camR, laneR, objR], [visS],activate_ld=False, activate_od=False)
         allProcesses.append(visProc)
         streamProc = CameraStreamer([visR], [])
     else:

@@ -9,7 +9,7 @@ from src.utils.templates.workerProcess import WorkerProcess
 
 class PerceptionVisualizer(WorkerProcess):
     # ===================================== INIT =========================================
-    def __init__(self, inPs, outPs, activate_ld=False, activate_od=False):
+    def __init__(self, inPs, outPs, activate_ld=True, activate_od=True):
         """Accepts frames from the camera, visualizes the results from the lane
         and object detection algorithms, and transmits a frame of the same size
 
@@ -96,9 +96,11 @@ class PerceptionVisualizer(WorkerProcess):
 
                 # https://docs.opencv.org/3.1.0/dc/da5/tutorial_py_drawing_functions.html
                 font = cv2.FONT_HERSHEY_SIMPLEX
+                title_ld = "Lanes" if activate_ld else "Lanes - Disabled"
+                title_od = "Objects" if activate_od else "Objects - Disabled"
                 cv2.putText(image_out,'Raw',       (0,int(self.height*0.49)),                     font,1,(255,255,255),2,cv2.LINE_AA)
-                cv2.putText(image_out,'Lanes',     (int(self.width*0.5),int(self.height*0.49)),   font,1,(255,255,255),2,cv2.LINE_AA)
-                cv2.putText(image_out,'Objects',   (0,int(self.height*0.99)),                     font,1,(255,255,255),2,cv2.LINE_AA)
+                cv2.putText(image_out,title_ld,     (int(self.width*0.5),int(self.height*0.49)),   font,1,(255,255,255),2,cv2.LINE_AA)
+                cv2.putText(image_out,title_od,   (0,int(self.height*0.99)),                     font,1,(255,255,255),2,cv2.LINE_AA)
                 cv2.putText(image_out,'Other',     (int(self.width*0.5),int(self.height*0.99)),   font,1,(255,255,255),2,cv2.LINE_AA)
 
                 # ----- write to the output stream -------
