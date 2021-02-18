@@ -13,7 +13,7 @@ from src.utils.perceptionVisualizer                 import PerceptionVisualizer
 from src.hardware.camera.cameraProcess              import CameraProcess
 from src.hardware.nucleoInterface.nucleoInterface   import NucleoInterface
 #from src.control.autonomousController               import AutonomousController
-#from src.perception.laneDetection.laneDetector      import LaneDetector
+from src.perception.laneDetection.laneDetector      import LaneDetector
 #from src.perception.objectDetection.objectDetector  import ObjectDetector
 
 # =============================== CONFIG =================================================
@@ -21,7 +21,7 @@ enableStream            =  True
 enableCameraSpoof       =  False
 enableRc                =  True
 enableVisualization     =  True
-enableLaneDetection     =  False
+enableLaneDetection     =  True
 enableObjectDetection   =  False
 
 #================================ PIPES ==================================================
