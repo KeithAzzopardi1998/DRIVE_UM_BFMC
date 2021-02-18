@@ -26,12 +26,12 @@ enableObjectDetection   =  False
 
 #================================ PIPES ==================================================
 laneR1,  laneS1   = Pipe(duplex = False)  # lane detection data (for visualization)
-laneR2,  laneS2   = Pipe(duplex = False)  # lane detection data (for autonomous control)
-objR1,   objS1    = Pipe(duplex = False)  # object detection data (for visualization)
-objR2,   objS2    = Pipe(duplex = False)  # object detection data (for autonomous control)
+#laneR2,  laneS2   = Pipe(duplex = False)  # lane detection data (for autonomous control)
+#objR1,   objS1    = Pipe(duplex = False)  # object detection data (for visualization)
+#objR2,   objS2    = Pipe(duplex = False)  # object detection data (for autonomous control)
 camR1,   camS1    = Pipe(duplex = False)  # video frame stream (for visualization/streaming)
 camR2,   camS2    = Pipe(duplex = False)  # video frame stream (for lane detection)
-camR3,   camS3    = Pipe(duplex = False)  # video frame stream (for object detection)
+#camR3,   camS3    = Pipe(duplex = False)  # video frame stream (for object detection)
 nucR,   nucS    = Pipe(duplex = False)  # Nucleo commands (from autonomous/remote controller)
 
 #================================ PROCESSES ==============================================
@@ -41,15 +41,15 @@ allProcesses = list()
 if enableStream: # set up stream
 
     if enableCameraSpoof: # use spoof camera
-        camProc = CameraSpoofer([],[camS1, camS2, camS3],'vid')
+        camProc = CameraSpoofer([],[camS1, camS2],'vid')
     else:                 # use real camera
-        camProc = CameraProcess([],[camS1, camS2, camS3])
+        camProc = CameraProcess([],[camS1, camS2])
     allProcesses.append(camProc)
 
     if enableVisualization:
         # set up intermediary process to visualize lane and object detection
         visR, visS = Pipe(duplex = False)
-        visProc = PerceptionVisualizer([camR1, laneR1, objR1], [visS],
+        visProc = PerceptionVisualizer([camR1, laneR1], [visS],
             activate_ld=enableLaneDetection,
             activate_od=enableObjectDetection)
         allProcesses.append(visProc)
@@ -62,7 +62,7 @@ if enableStream: # set up stream
 # =============================== PERCEPTION =============================================
 # -------- Lane Detection -----------
 if enableLaneDetection:
-    laneProc = LaneDetector([camR2], [laneS1, laneS2])
+    laneProc = LaneDetector([camR2], [laneS1])
     allProcesses.append(laneProc)
 # -------- Object Detection ---------
 if enableObjectDetection:

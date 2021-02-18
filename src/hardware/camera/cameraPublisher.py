@@ -107,7 +107,9 @@ class CameraPublisher(ThreadWithStop):
 
             # output image and time stamp
             # Note: The sending process can be blocked, when doesn't exist any consumer process and it reaches the limit size.
+            print("PUBLISHER LOG: going to transmit image of shape",data.shape)
             for outP in self.outPs:
+                print("output to pipe")
                 outP.send([[stamp], data])
 
             
