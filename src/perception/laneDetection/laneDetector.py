@@ -5,7 +5,7 @@ import math
 from threading import Thread
 from collections import deque
 from scipy import stats
-import preProcessing as pp
+import src.perception.laneDetection.preProcessing as pp
 
 from src.utils.templates.workerProcess import WorkerProcess
 
