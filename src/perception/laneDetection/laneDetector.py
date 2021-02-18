@@ -36,7 +36,7 @@ class LaneDetector(WorkerProcess):
         if self._blocker.is_set():
             return
 
-        thr = Thread(name='StreamSending',target = self._the_thread, args= (self.inPs[0], self.outPs[0], ))
+        thr = Thread(name='StreamSending',target = self._the_thread, args= (self.inPs, self.outPs, ))
         thr.daemon = True
         self.threads.append(thr)
 
@@ -58,13 +58,13 @@ class LaneDetector(WorkerProcess):
 
 
         # Begin lane detection pipiline
-        img = image_in.copy()
+        img = img_in.copy()
         combined_hsl_img = pp.filter_img_hsl(img)
         grayscale_img = pp.grayscale(combined_hsl_img)
         gaussian_smoothed_img = pp.gaussian_blur(grayscale_img, kernel_size=5)
         canny_img = cv2.Canny(gaussian_smoothed_img, 50, 150)
         segmented_img = pp.getROI(canny_img)
-        hough_lines = hough_transform(segmented_img, rho, theta, threshold, min_line_length, max_line_gap)
+        hough_lines = pp.hough_transform(segmented_img, rho, theta, threshold, min_line_length, max_line_gap)
 
         try:
             left_lane_lines, right_lane_lines = pp.separate_lines(hough_lines, img)
