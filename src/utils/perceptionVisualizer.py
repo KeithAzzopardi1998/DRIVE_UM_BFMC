@@ -71,11 +71,11 @@ class PerceptionVisualizer(WorkerProcess):
                 #  ----- read the input streams ----------
                 stamps, image_in = inPs[0].recv()
                 #print("LOG: received image")
-                if activate_ld: left, right = inPs[1].recv() # every packet received should be a list with the left and right lane info
+                if activate_ld: stamps, coefficients_numpy = inPs[1].recv() # every packet received should be a list with the left and right lane info
                 if activate_od: objects = inPs[2].recv()
 
                 # ----- draw the lane lines --------------
-                image_ld = self.getImage_ld(image_in, left, right) if activate_ld else image_in
+                image_ld = self.getImage_ld(image_in, coefficients_numpy) if activate_ld else image_in
 
                 # ----- draw the object bounding boxes ---
                 image_od = self.getImage_od(image_in, objects) if activate_od else image_in
@@ -156,9 +156,11 @@ class PerceptionVisualizer(WorkerProcess):
         new_lines = [[[int(x_to_bottom_y), int(bottom_y), int(top_x_to_y), int(top_y)]]]
         return self.draw_lines(img, new_lines, make_copy=make_copy)
 
-    def getImage_ld(self, image_in,left_coefficients,right_coefficients):
+    def getImage_ld(self, image_in,coefficients_numpy):
         img = image_in.copy()
         vert = self.get_vertices_for_img(img)
+        left_coefficients = coefficients_numpy[0]
+        right_coefficients = coefficients_numpy[1]
         region_top_left = vert[0][1]
 
         lane_img_left = self.trace_lane_line_with_coefficients(img, left_coefficients, region_top_left[1], make_copy=True)
