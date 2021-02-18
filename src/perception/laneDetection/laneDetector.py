@@ -10,10 +10,10 @@ import preProcessing as pp
 from src.utils.templates.workerProcess import WorkerProcess
 
 class LaneDetector(WorkerProcess):
-	#======================= INIT =======================
-	def __init__(self, inPs, outPs):
-		 """Accepts frames from the camera, processes the frame and detect lanes,
-		 and transmits information about left and right lanes.
+    #======================= INIT =======================
+    def __init__(self, inPs, outPs):
+        """Accepts frames from the camera, processes the frame and detect lanes,
+        and transmits information about left and right lanes.
         Parameters
         ------------
         inPs : list(Pipe)
@@ -21,11 +21,11 @@ class LaneDetector(WorkerProcess):
         outPs : list(Pipe)
             0 - send lane information
         """
-    super(LaneDetector,self).__init__(inPs, outPs)
+        super(LaneDetector,self).__init__(inPs, outPs)
 
     #======================= RUN =======================
     def run(self):
-    	"""Apply the initializing methods and start the threads.
+        """Apply the initializing methods and start the threads.
         """
         super(LaneDetector,self).run()
 
@@ -41,16 +41,16 @@ class LaneDetector(WorkerProcess):
         self.threads.append(thr)
 
 
-	#======================= METHODS =======================
-	def laneDetection(self, img_in):
-		# Setting Hough Transform Parameters
-		rho = 1 # 1 degree
-		theta = (np.pi/180) * 1
-		threshold = 15
-		min_line_length = 20
-		max_line_gap = 10
+    #======================= METHODS =======================
+    def laneDetection(self, img_in):
+        # Setting Hough Transform Parameters
+        rho = 1 # 1 degree
+        theta = (np.pi/180) * 1
+        threshold = 15
+        min_line_length = 20
+        max_line_gap = 10
 
-		left_lane_coefficients  = pp.create_coefficients_list()
+        left_lane_coefficients  = pp.create_coefficients_list()
         right_lane_coefficients = pp.create_coefficients_list()
 
         previous_left_lane_coefficients = None
@@ -67,23 +67,23 @@ class LaneDetector(WorkerProcess):
         hough_lines = hough_transform(segmented_img, rho, theta, threshold, min_line_length, max_line_gap)
 
         try:
-			left_lane_lines, right_lane_lines = pp.separate_lines(hough_lines, img)
-			left_lane_slope, left_intercept = pp.getLanesFormula(left_lane_lines)
-			right_lane_slope, right_intercept = pp.getLanesFormula(right_lane_lines)
-			smoothed_left_lane_coefficients = pp.determine_line_coefficients(left_lane_coefficients, [left_lane_slope, left_intercept])
-			smoothed_right_lane_coefficients = pp.determine_line_coefficients(right_lane_coefficients, [right_lane_slope, right_intercept])
+            left_lane_lines, right_lane_lines = pp.separate_lines(hough_lines, img)
+            left_lane_slope, left_intercept = pp.getLanesFormula(left_lane_lines)
+            right_lane_slope, right_intercept = pp.getLanesFormula(right_lane_lines)
+            smoothed_left_lane_coefficients = pp.determine_line_coefficients(left_lane_coefficients, [left_lane_slope, left_intercept])
+            smoothed_right_lane_coefficients = pp.determine_line_coefficients(right_lane_coefficients, [right_lane_slope, right_intercept])
 
-			return np.array([smoothed_left_lane_coefficients, smoothed_right_lane_coefficients])
+            return np.array([smoothed_left_lane_coefficients, smoothed_right_lane_coefficients])
 
-		except Exception as e:
-			#print("*** Error - will use saved coefficients ", e)
-			smoothed_left_lane_coefficients = pp.determine_line_coefficients(left_lane_coefficients, [0.0, 0.0])
-			smoothed_right_lane_coefficients = pp.determine_line_coefficients(right_lane_coefficients, [0.0, 0.0])
+        except Exception as e:
+            #print("*** Error - will use saved coefficients ", e)
+            smoothed_left_lane_coefficients = pp.determine_line_coefficients(left_lane_coefficients, [0.0, 0.0])
+            smoothed_right_lane_coefficients = pp.determine_line_coefficients(right_lane_coefficients, [0.0, 0.0])
 
-			return np.array([smoothed_left_lane_coefficients, smoothed_right_lane_coefficients])
+            return np.array([smoothed_left_lane_coefficients, smoothed_right_lane_coefficients])
 
- 	def _the_thread(self, inPs, outPs):
- 		"""Read the image from input stream, process it and send lane information
+     def _the_thread(self, inPs, outPs):
+         """Read the image from input stream, process it and send lane information
 
         Parameters
         ----------
@@ -106,7 +106,7 @@ class LaneDetector(WorkerProcess):
                     outP.send([[stamp], lanes_coefficients])
 
             except Exception as e:
-            	print("LaneDetector failed to obtain lanes:",e,"\n")
+                print("LaneDetector failed to obtain lanes:",e,"\n")
                 pass
 
 
