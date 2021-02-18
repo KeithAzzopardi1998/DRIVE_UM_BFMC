@@ -1,5 +1,5 @@
-import numpy as np 
-import cv2 
+import numpy as np
+import cv2
 import math
 from scipy import stats
 from collections import deque
@@ -11,7 +11,7 @@ def isolate_yellow_hsl(img):
 	# Lower value equivalent pure HSL is (30, 45, 15)
 	low_threshold = np.array([15, 38, 115], dtype=np.uint8)
 	# Higher value equivalent pure HSL is (75, 100, 80)
-	high_threshold = np.array([35, 204, 255], dtype=np.uint8)  
+	high_threshold = np.array([35, 204, 255], dtype=np.uint8)
 
 	yellow_mask = cv2.inRange(img, low_threshold, high_threshold)
 
@@ -21,7 +21,7 @@ def isolate_while_hsl(img):
 	# Lower value equivalent pure HSL is (30, 45, 15)
 	low_threshold = np.array([0, 200, 0], dtype=np.uint8)
 	# Higher value equivalent pure HSL is (360, 100, 100)
-	high_threshold = np.array([180, 255, 255], dtype=np.uint8)  
+	high_threshold = np.array([180, 255, 255], dtype=np.uint8)
 
 	white_mask = cv2.inRange(img, low_threshold, high_threshold)
 
@@ -50,8 +50,8 @@ def gaussian_blur(grayscale_img, kernel_size=5):
     return cv2.GaussianBlur(grayscale_img, (kernel_size, kernel_size), 0)
 
 def getVertices(img):
-	"""This functions needs to be hard coded for 
-	our resolution - might need tuning 
+	"""This functions needs to be hard coded for
+	our resolution - might need tuning
 	"""
 	img_shape = img.shape
 	height = img_shape[0]
@@ -87,7 +87,7 @@ def getROI(img):
 
 	vert = getVertices(img)
 
-	#filling pixels inside the polygon defined by "vertices" with the fill color    
+	#filling pixels inside the polygon defined by "vertices" with the fill color
 	cv2.fillPoly(mask, vert, ignore_mask_color)
 
 	#return image only where mask nonzero
@@ -98,65 +98,65 @@ def hough_transform(canny_img, rho, theta, threshold, min_line_len, max_line_gap
 
 def separate_lines(lines, img):
     img_shape = img.shape
-    
+
     middle_x = img_shape[1] / 2
-    
+
     left_lane_lines = []
     right_lane_lines = []
 
     for line in lines:
         for x1, y1, x2, y2 in line:
-            dx = x2 - x1 
+            dx = x2 - x1
             if dx == 0:
                 #Discarding line since we can't gradient is undefined at this dx
                 continue
             dy = y2 - y1
-            
+
             # Similarly, if the y value remains constant as x increases, discard line
             if dy == 0:
                 continue
-            
+
             slope = dy / dx
-            
-            # This is pure guess than anything... 
+
+            # This is pure guess than anything...
             # but get rid of lines with a small slope as they are likely to be horizontal one
             epsilon = 0.1
             if abs(slope) <= epsilon:
                 continue
-            
+
             if slope < 0 and x1 < middle_x and x2 < middle_x:
                 # Lane should also be within the left hand side of region of interest
                 left_lane_lines.append([[x1, y1, x2, y2]])
             elif x1 >= middle_x and x2 >= middle_x:
                 # Lane should also be within the right hand side of region of interest
                 right_lane_lines.append([[x1, y1, x2, y2]])
-    
+
     return left_lane_lines, right_lane_lines
 
 def getLanesFormula(lines):
     xs = []
     ys = []
-    
+
     for line in lines:
         for x1, y1, x2, y2 in line:
             xs.append(x1)
             xs.append(x2)
             ys.append(y1)
             ys.append(y2)
-    
+
     slope, intercept, r_value, p_value, std_err = stats.linregress(xs, ys)
-    
+
     # a straight line is expressed as f(x) = Ax + b. Slope is the A, while intercept is the b
     return (slope, intercept)
 
 def create_coefficients_list(length = 10):
     return deque(maxlen=length)
 
-def mean_coefficients(coefficients_queue, axis=0):        
+def mean_coefficients(coefficients_queue, axis=0):
 	return [0, 0] if len(coefficients_queue) == 0 else np.mean(coefficients_queue, axis=axis)
 
 def determine_line_coefficients(stored_coefficients, current_coefficients, MAXIMUM_SLOPE_DIFF=0.1, MAXIMUM_INTERCEPT_DIFF=50.0):
-	
+
 	if len(stored_coefficients)==0:
 		stored_coefficients.append(current_coefficients)
 		return current_coefficients
@@ -165,7 +165,7 @@ def determine_line_coefficients(stored_coefficients, current_coefficients, MAXIM
 	abs_intercept_diff = abs(current_coefficients[1] - mean[1])
 
 	if abs_slope_diff > MAXIMUM_SLOPE_DIFF or abs_intercept_diff > MAXIMUM_INTERCEPT_DIFF:
-		# Identified big difference in slope 
+		# Identified big difference in slope
         # In this case use the mean
 		return mean
 	else:

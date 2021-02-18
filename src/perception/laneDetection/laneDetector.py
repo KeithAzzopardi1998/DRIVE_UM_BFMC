@@ -1,24 +1,24 @@
-import numpy as np 
-import cv2 
+import numpy as np
+import cv2
 import time
 import math
 from threading import Thread
 from collections import deque
 from scipy import stats
-import preProcessing as pp 
+import preProcessing as pp
 
 from src.utils.templates.workerProcess import WorkerProcess
 
 class LaneDetector(WorkerProcess):
 	#======================= INIT =======================
 	def __init__(self, inPs, outPs):
-		 """Accepts frames from the camera, processes the frame and detect lanes, 
+		 """Accepts frames from the camera, processes the frame and detect lanes,
 		 and transmits information about left and right lanes.
         Parameters
         ------------
         inPs : list(Pipe)
             0 - receive image feed from the camera
-        outPs : list(Pipe) 
+        outPs : list(Pipe)
             0 - send lane information
         """
     super(LaneDetector,self).__init__(inPs, outPs)
@@ -34,7 +34,7 @@ class LaneDetector(WorkerProcess):
         """Initialize the read thread to receive the video.
         """
         if self._blocker.is_set():
-            return    
+            return
 
         thr = Thread(name='StreamSending',target = self._the_thread, args= (self.inPs[0], self.outPs[0], ))
         thr.daemon = True
@@ -52,7 +52,7 @@ class LaneDetector(WorkerProcess):
 
 		left_lane_coefficients  = pp.create_coefficients_list()
         right_lane_coefficients = pp.create_coefficients_list()
-        
+
         previous_left_lane_coefficients = None
         previous_right_lane_coefficients = None
 
@@ -84,18 +84,18 @@ class LaneDetector(WorkerProcess):
 
  	def _the_thread(self, inPs, outPs):
  		"""Read the image from input stream, process it and send lane information
-        
+
         Parameters
         ----------
         inPs : list(Pipe)
             0 - video frames
-        outPs : list(Pipe) 
+        outPs : list(Pipe)
             0 - array of left and right lane information
         """
 
         while True:
             try:
-                #  ----- read the input streams ---------- 
+                #  ----- read the input streams ----------
                 stamps, image_in = inPs[0].recv()
 
                 # proncess input frame and return array [left lane coeffs, right lane coeffs]
@@ -108,7 +108,7 @@ class LaneDetector(WorkerProcess):
             except Exception as e:
             	print("LaneDetector failed to obtain lanes:",e,"\n")
                 pass
-                
+
 
 
 
