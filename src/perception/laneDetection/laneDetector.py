@@ -82,17 +82,16 @@ class LaneDetector(WorkerProcess):
 
             return np.array([smoothed_left_lane_coefficients, smoothed_right_lane_coefficients])
 
-     def _the_thread(self, inPs, outPs):
-         """Read the image from input stream, process it and send lane information
+    def _the_thread(self, inPs, outPs):
+        """Read the image from input stream, process it and send lane information
 
         Parameters
         ----------
         inPs : list(Pipe)
-            0 - video frames
+        0 - video frames
         outPs : list(Pipe)
-            0 - array of left and right lane information
+        0 - array of left and right lane information
         """
-
         while True:
             try:
                 #  ----- read the input streams ----------
