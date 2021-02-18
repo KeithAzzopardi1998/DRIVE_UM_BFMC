@@ -3,7 +3,7 @@ sys.path.append('.')
 
 import time
 import signal
-from multiprocessing import Pipe, Process, Event 
+from multiprocessing import Pipe, Process, Event
 
 from src.utils.remoteControlReceiver                import RemoteControlReceiver
 from src.utils.cameraStreamer                       import CameraStreamer
@@ -17,10 +17,12 @@ from src.hardware.nucleoInterface.nucleoInterface   import NucleoInterface
 #from src.perception.objectDetection.objectDetector  import ObjectDetector
 
 # =============================== CONFIG =================================================
-enableStream        =  True
-enableCameraSpoof   =  False 
-enableRc            =  True
-enableVisualization =  True
+enableStream            =  True
+enableCameraSpoof       =  False
+enableRc                =  True
+enableVisualization     =  True
+enableLaneDetection     =  False
+enableObjectDetection   =  False
 
 #================================ PIPES ==================================================
 laneR,  laneS   = Pipe(duplex = False)  # lane detection data
@@ -43,7 +45,9 @@ if enableStream: # set up stream
     if enableVisualization:
         # set up intermediary process to visualize lane and object detection
         visR, visS = Pipe(duplex = False)
-        visProc = PerceptionVisualizer([camR, laneR, objR], [visS],activate_ld=False, activate_od=False)
+        visProc = PerceptionVisualizer([camR, laneR, objR], [visS],
+            activate_ld=enableLaneDetection,
+            activate_od=enableObjectDetection)
         allProcesses.append(visProc)
         streamProc = CameraStreamer([visR], [])
     else:
@@ -53,11 +57,13 @@ if enableStream: # set up stream
 
 # =============================== PERCEPTION =============================================
 # -------- Lane Detection -----------
-#laneProc = LaneDetector([camR], [laneS])
-#allProcesses.append(laneProc)
+if enableLaneDetection:
+    laneProc = LaneDetector([camR], [laneS])
+    allProcesses.append(laneProc)
 # -------- Object Detection ---------
-#objProc = ObjectDetector([camR], [objS])
-#allProcesses.append(objProc)
+if enableObjectDetection:
+    objProc = ObjectDetector([camR], [objS])
+    allProcesses.append(objProc)
 
 # =============================== CONTROL ================================================
 if enableRc: # use romote controller
@@ -76,7 +82,7 @@ for proc in allProcesses:
     proc.daemon = True
     proc.start()
 
-blocker = Event()  
+blocker = Event()
 
 try:
     blocker.wait()
