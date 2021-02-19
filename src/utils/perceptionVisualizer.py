@@ -71,7 +71,9 @@ class PerceptionVisualizer(WorkerProcess):
                 #  ----- read the input streams ----------
                 stamps, image_in = inPs[0].recv()
                 #print("LOG: received image")
-                if activate_ld: stamps, coefficients_numpy = inPs[1].recv() # every packet received should be a list with the left and right lane info
+                if activate_ld:
+                    stamps, coefficients_numpy = inPs[1].recv() # every packet received should be a list with the left and right lane info
+                    stamps, image_ld_preprocessed = inPs[3].recv()
                 if activate_od: objects = inPs[2].recv()
 
                 # ----- draw the lane lines --------------
@@ -81,7 +83,7 @@ class PerceptionVisualizer(WorkerProcess):
                 image_od = self.getImage_od(image_in, objects) if activate_od else image_in
 
                 # ----- we can add another frame here ----
-                image_xy = image_in
+                image_xy = image_ld_preprocessed
 
                 # ----- combine the images ---------------
                 image_in_resized = cv2.resize(image_in,(int(self.width/2),int(self.height/2)))
@@ -101,7 +103,7 @@ class PerceptionVisualizer(WorkerProcess):
                 cv2.putText(image_out,'Raw',       (0,int(self.height*0.49)),                     font,1,(255,255,255),2,cv2.LINE_AA)
                 cv2.putText(image_out,title_ld,     (int(self.width*0.5),int(self.height*0.49)),   font,1,(255,255,255),2,cv2.LINE_AA)
                 cv2.putText(image_out,title_od,   (0,int(self.height*0.99)),                     font,1,(255,255,255),2,cv2.LINE_AA)
-                cv2.putText(image_out,'Other',     (int(self.width*0.5),int(self.height*0.99)),   font,1,(255,255,255),2,cv2.LINE_AA)
+                cv2.putText(image_out,'Lane Preprocessing',     (int(self.width*0.5),int(self.height*0.99)),   font,1,(255,255,255),2,cv2.LINE_AA)
 
                 # ----- write to the output stream -------
                 assert image_out.shape == self.imgSize
