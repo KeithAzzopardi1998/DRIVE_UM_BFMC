@@ -33,6 +33,7 @@ camR1,   camS1    = Pipe(duplex = False)  # video frame stream (for visualizatio
 camR2,   camS2    = Pipe(duplex = False)  # video frame stream (for lane detection)
 #camR3,   camS3    = Pipe(duplex = False)  # video frame stream (for object detection)
 nucR,   nucS    = Pipe(duplex = False)  # Nucleo commands (from autonomous/remote controller)
+visOtherR, visOtherS = Pipe(duplex=False)
 
 #================================ PROCESSES ==============================================
 allProcesses = list()
@@ -49,7 +50,7 @@ if enableStream: # set up stream
     if enableVisualization:
         # set up intermediary process to visualize lane and object detection
         visR, visS = Pipe(duplex = False)
-        visProc = PerceptionVisualizer([camR1, laneR1], [visS],
+        visProc = PerceptionVisualizer([camR1, laneR1, None, visOtherR], [visS],
             activate_ld=enableLaneDetection,
             activate_od=enableObjectDetection)
         allProcesses.append(visProc)
@@ -62,7 +63,7 @@ if enableStream: # set up stream
 # =============================== PERCEPTION =============================================
 # -------- Lane Detection -----------
 if enableLaneDetection:
-    laneProc = LaneDetector([camR2], [laneS1])
+    laneProc = LaneDetector([camR2], [laneS1, visOtherS])
     allProcesses.append(laneProc)
 # -------- Object Detection ---------
 if enableObjectDetection:
