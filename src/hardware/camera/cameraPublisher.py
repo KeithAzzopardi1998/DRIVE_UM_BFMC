@@ -51,9 +51,9 @@ class CameraPublisher(ThreadWithStop):
         self.camera.resolution      =   (1640,1232)
         self.camera.framerate       =   15
 
-        self.camera.brightness      =   50
+        self.camera.brightness      =   60
         self.camera.shutter_speed   =   1200
-        self.camera.contrast        =   0
+        self.camera.contrast        =   50
         self.camera.iso             =   0 # auto
         
 
@@ -107,9 +107,9 @@ class CameraPublisher(ThreadWithStop):
 
             # output image and time stamp
             # Note: The sending process can be blocked, when doesn't exist any consumer process and it reaches the limit size.
-            print("PUBLISHER LOG: going to transmit image of shape",data.shape)
+            #print("PUBLISHER LOG: going to transmit image of shape",data.shape)
             for outP in self.outPs:
-                print("output to pipe")
+                
                 outP.send([[stamp], data])
 
             
