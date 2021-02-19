@@ -59,12 +59,20 @@ class LaneDetector(WorkerProcess):
 
         # Begin lane detection pipiline
         img = img_in.copy()
+        img = cv2.convertScaleAbs(img,alpha=2.0,beta=30)
+        #print("LANE LINES LOG - COPIED IMAGE", img)
         combined_hsl_img = pp.filter_img_hsl(img)
+        #print("LANE LINES LOG - COMBINED IMAGE HSL", combined_hsl_img)
         grayscale_img = pp.grayscale(combined_hsl_img)
+        #print("LANE LINES LOG - COMBINED IMAGE GRAYSCALE", grayscale_img)
         gaussian_smoothed_img = pp.gaussian_blur(grayscale_img, kernel_size=5)
         canny_img = cv2.Canny(gaussian_smoothed_img, 50, 150)
         segmented_img = pp.getROI(canny_img)
+        #print("LANE LINES LOG - SEGMENTED IMAGE SUM", np.sum(segmented_img))
         hough_lines = pp.hough_transform(segmented_img, rho, theta, threshold, min_line_length, max_line_gap)
+        #print("LANE LINES LOG - HOUGH LINES", hough_lines)
+
+        preprocessed_img = cv2.cvtColor(segmented_img,cv2.COLOR_GRAY2BGR)
 
         try:
             left_lane_lines, right_lane_lines = pp.separate_lines(hough_lines, img)
@@ -72,15 +80,19 @@ class LaneDetector(WorkerProcess):
             right_lane_slope, right_intercept = pp.getLanesFormula(right_lane_lines)
             smoothed_left_lane_coefficients = pp.determine_line_coefficients(left_lane_coefficients, [left_lane_slope, left_intercept])
             smoothed_right_lane_coefficients = pp.determine_line_coefficients(right_lane_coefficients, [right_lane_slope, right_intercept])
+            
+            #print("LANE LINES LOG - LEFT:", smoothed_left_lane_coefficients)
 
-            return np.array([smoothed_left_lane_coefficients, smoothed_right_lane_coefficients])
+            #print("LANE LINES LOG - RIGHT:", smoothed_right_lane_coefficients)
+            
+            return np.array([smoothed_left_lane_coefficients, smoothed_right_lane_coefficients]), preprocessed_img
 
         except Exception as e:
             #print("*** Error - will use saved coefficients ", e)
             smoothed_left_lane_coefficients = pp.determine_line_coefficients(left_lane_coefficients, [0.0, 0.0])
             smoothed_right_lane_coefficients = pp.determine_line_coefficients(right_lane_coefficients, [0.0, 0.0])
 
-            return np.array([smoothed_left_lane_coefficients, smoothed_right_lane_coefficients])
+            return np.array([smoothed_left_lane_coefficients, smoothed_right_lane_coefficients]), preprocessed_img
 
     def _the_thread(self, inPs, outPs):
         """Read the image from input stream, process it and send lane information
@@ -94,15 +106,18 @@ class LaneDetector(WorkerProcess):
         """
         while True:
             try:
+                #print("LANE DETECT LOG, STARTED THREAD")
                 #  ----- read the input streams ----------
                 stamps, image_in = inPs[0].recv()
-
+                #print("LANE DETECT LOG, GOTTEN IMAGE")
                 # proncess input frame and return array [left lane coeffs, right lane coeffs]
-                lanes_coefficients = self.laneDetection(image_in)
+                lanes_coefficients,preprocessed_img = self.laneDetection(image_in)
+                #print("LANE DETECT LOG, GOTTEN COEFFS", lanes_coefficients)
 
                 stamp = time.time()
-                for outP in self.outPs:
-                    outP.send([[stamp], lanes_coefficients])
+                #for outP in self.outPs:
+                outPs[0].send([[stamp], lanes_coefficients])
+                outPs[1].send([[stamp], preprocessed_img])
 
             except Exception as e:
                 print("LaneDetector failed to obtain lanes:",e,"\n")
