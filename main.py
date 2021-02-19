@@ -14,7 +14,7 @@ from src.hardware.camera.cameraProcess              import CameraProcess
 from src.hardware.nucleoInterface.nucleoInterface   import NucleoInterface
 #from src.control.autonomousController               import AutonomousController
 from src.perception.laneDetection.laneDetector      import LaneDetector
-#from src.perception.objectDetection.objectDetector  import ObjectDetector
+from src.perception.objectDetection.objectDetector  import ObjectDetector
 
 # =============================== CONFIG =================================================
 enableStream            =  True
@@ -22,16 +22,16 @@ enableCameraSpoof       =  False
 enableRc                =  True
 enableVisualization     =  True
 enableLaneDetection     =  True
-enableObjectDetection   =  False
+enableObjectDetection   =  True
 
 #================================ PIPES ==================================================
 laneR1,  laneS1   = Pipe(duplex = False)  # lane detection data (for visualization)
 #laneR2,  laneS2   = Pipe(duplex = False)  # lane detection data (for autonomous control)
-#objR1,   objS1    = Pipe(duplex = False)  # object detection data (for visualization)
+objR1,   objS1    = Pipe(duplex = False)  # object detection data (for visualization)
 #objR2,   objS2    = Pipe(duplex = False)  # object detection data (for autonomous control)
 camR1,   camS1    = Pipe(duplex = False)  # video frame stream (for visualization/streaming)
 camR2,   camS2    = Pipe(duplex = False)  # video frame stream (for lane detection)
-#camR3,   camS3    = Pipe(duplex = False)  # video frame stream (for object detection)
+camR3,   camS3    = Pipe(duplex = False)  # video frame stream (for object detection)
 nucR,   nucS    = Pipe(duplex = False)  # Nucleo commands (from autonomous/remote controller)
 visOtherR, visOtherS = Pipe(duplex=False)
 
@@ -42,15 +42,15 @@ allProcesses = list()
 if enableStream: # set up stream
 
     if enableCameraSpoof: # use spoof camera
-        camProc = CameraSpoofer([],[camS1, camS2],'vid')
+        camProc = CameraSpoofer([],[camS1, camS2, camS3],'vid')
     else:                 # use real camera
-        camProc = CameraProcess([],[camS1, camS2])
+        camProc = CameraProcess([],[camS1, camS2, camS3])
     allProcesses.append(camProc)
 
     if enableVisualization:
         # set up intermediary process to visualize lane and object detection
         visR, visS = Pipe(duplex = False)
-        visProc = PerceptionVisualizer([camR1, laneR1, None, visOtherR], [visS],
+        visProc = PerceptionVisualizer([camR1, laneR1, objR1, visOtherR], [visS],
             activate_ld=enableLaneDetection,
             activate_od=enableObjectDetection)
         allProcesses.append(visProc)
@@ -67,7 +67,7 @@ if enableLaneDetection:
     allProcesses.append(laneProc)
 # -------- Object Detection ---------
 if enableObjectDetection:
-    objProc = ObjectDetector([camR3], [objS1, objS2])
+    objProc = ObjectDetector([camR3], [objS1])
     allProcesses.append(objProc)
 
 # =============================== CONTROL ================================================
