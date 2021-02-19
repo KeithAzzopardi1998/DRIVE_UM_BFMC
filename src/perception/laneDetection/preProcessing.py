@@ -57,20 +57,12 @@ def getVertices(img):
     height = img_shape[0]
     width = img_shape[1]
 
-    vert = None
+    region_top_left = (0.00*width, 0.50*height)
+    region_top_right = (1.00*width, 0.50*height)
+    region_bottom_left = (0.00*width, 0.00*height)
+    region_bottom_right = (1.00*width, 0.00*height)
 
-    if (width, height) == (960, 540):
-        region_bottom_left = (130 ,img_shape[0] - 1)
-        region_top_left = (410, 330)
-        region_top_right = (650, 350)
-        region_bottom_right = (img_shape[1] - 30,img_shape[0] - 1)
-        vert = np.array([[region_bottom_left , region_top_left, region_top_right, region_bottom_right]], dtype=np.int32)
-    else:
-        region_bottom_left = (200 , 680)
-        region_top_left = (600, 450)
-        region_top_right = (750, 450)
-        region_bottom_right = (1100, 650)
-        vert = np.array([[region_bottom_left , region_top_left, region_top_right, region_bottom_right]], dtype=np.int32)
+    vert = np.array([[region_bottom_left , region_top_left, region_top_right, region_bottom_right]], dtype=np.int32)
 
     return vert
 
