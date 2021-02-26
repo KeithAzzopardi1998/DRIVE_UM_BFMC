@@ -7,14 +7,7 @@ import time
 
 from src.utils.templates.workerProcess import WorkerProcess
 
-
-from PIL import Image
-from PIL import ImageDraw
-
-from pycoral.adapters import common
-from pycoral.adapters import detect
-from pycoral.utils.dataset import read_label_file
-from pycoral.utils.edgetpu import make_interpreter
+import traceback
 
 class PerceptionVisualizer(WorkerProcess):
     # ===================================== INIT =========================================
@@ -80,8 +73,11 @@ class PerceptionVisualizer(WorkerProcess):
                 #  ----- read the input streams ----------
                 stamps, image_in = inPs[0].recv()
                 #print("LOG: received image")
-                if activate_ld: stamps, coefficients_numpy = inPs[1].recv() # every packet received should be a list with the left and right lane info
-                if activate_od: objects = inPs[2].recv()
+                if activate_ld:
+                    stamps, coefficients_numpy = inPs[1].recv() # every packet received should be a list with the left and right lane info
+                    stamps, other_image = inPs[3].recv() # every packet received should be the segmented image from the lane detection
+                if activate_od:
+                    stamps, objects = inPs[2].recv()
 
                 # ----- draw the lane lines --------------
                 image_ld = self.getImage_ld(image_in, coefficients_numpy) if activate_ld else image_in
@@ -90,7 +86,7 @@ class PerceptionVisualizer(WorkerProcess):
                 image_od = self.getImage_od(image_in, objects) if activate_od else image_in
 
                 # ----- we can add another frame here ----
-                image_xy = image_in
+                image_xy = other_image
 
                 # ----- combine the images ---------------
                 image_in_resized = cv2.resize(image_in,(int(self.width/2),int(self.height/2)))
@@ -121,6 +117,7 @@ class PerceptionVisualizer(WorkerProcess):
 
             except Exception as e:
                 print("PerceptionVisualizer failed to process image:",e,"\n")
+                traceback.print_exc()
                 pass
 
     # ===================================== LANE DETECTION ===============================
@@ -165,7 +162,7 @@ class PerceptionVisualizer(WorkerProcess):
         new_lines = [[[int(x_to_bottom_y), int(bottom_y), int(top_x_to_y), int(top_y)]]]
         return self.draw_lines(img, new_lines, make_copy=make_copy)
 
-    def getImage_ld(self, image_in,coefficients_numpy):
+    def getImage_ld(self, image_in, coefficients_numpy):
         img = image_in.copy()
         vert = self.get_vertices_for_img(img)
         left_coefficients = coefficients_numpy[0]
@@ -182,15 +179,29 @@ class PerceptionVisualizer(WorkerProcess):
         return img_with_lane_weight
 
     # ===================================== OBJECT DETECTION =============================
-    def getImage_od(self, img_in, object_list):
+    def getImage_od(self, image_in, object_list):
         # based on https://github.com/google-coral/pycoral/blob/master/examples/detect_image.py
         image = image_in.copy()
-        draw = ImageDraw.Draw(image)
-        for obj in object_list :
-            bbox = obj.bbox
-            draw.rectangle([(bbox.xmin, bbox.ymin), (bbox.xmax, bbox.ymax)],
-                        outline='red')
-            draw.text((bbox.xmin + 10, bbox.ymin + 10),
-                    '%s\n%.2f' % (self.LABEL_DICT.get(obj.id, obj.id), obj.score),
-                    fill='red')
+
+        print(object_list)
+
+        if not object_list:
+            print('list was empty')
+            return image
+        else:
+            for obj in object_list:
+                print(obj)
+                w = image.shape[1]
+                h = image.shape[0]
+                ymin, xmin, ymax, xmax = obj['bounding_box']
+                xmin = int(xmin * w)
+                xmax = int(xmax * w)
+                ymin = int(ymin * h)
+                ymax = int(ymax * h)
+
+                cv2.rectangle(image, (xmin, ymin), (xmax, ymax), (255, 0, 0), 2)
+                y = ymin - 15 if ymin - 15 > 15 else ymin + 15
+                cv2.putText(image,"{}: {:.2f}%".format(self.LABEL_DICT[obj['class_id']], obj['score'] * 100),
+                            (xmin, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
+
         return image

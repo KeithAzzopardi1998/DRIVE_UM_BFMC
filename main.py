@@ -43,14 +43,20 @@ if enableStream: # set up stream
 
     if enableCameraSpoof: # use spoof camera
         camProc = CameraSpoofer([],[camS1, camS2, camS3],'vid')
+        #camProc = CameraSpoofer([],[camS1, camS2],'vid')
+        #camProc = CameraSpoofer([],[camS1, camS3],'vid')
     else:                 # use real camera
         camProc = CameraProcess([],[camS1, camS2, camS3])
+        #camProc = CameraProcess([],[camS1, camS2])
+        #camProc = CameraProcess([],[camS1, camS3])
     allProcesses.append(camProc)
 
     if enableVisualization:
         # set up intermediary process to visualize lane and object detection
         visR, visS = Pipe(duplex = False)
         visProc = PerceptionVisualizer([camR1, laneR1, objR1, visOtherR], [visS],
+        #visProc = PerceptionVisualizer([camR1, None, objR1, visOtherR], [visS],
+        #visProc = PerceptionVisualizer([camR1, laneR1, None, visOtherR], [visS],
             activate_ld=enableLaneDetection,
             activate_od=enableObjectDetection)
         allProcesses.append(visProc)
