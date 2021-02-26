@@ -14,6 +14,7 @@ This repository contains the code which will run on the Raspberry Pi that contro
 | Nucleo Interface | Nucleo Commands | Serialised message (this is directly sent to the Nucleo) |
 | Communicator (GPS Handler, Object Handler) | GPS (raw), object vector | GPS and send location of objects to server |
 | Ultrasonic (currently optional, but would have a similar thread to Camera Publisher) | None | Distance to object |
+| Visualizer | Camera Image, lane vector, object vector, debugging images | Combined multi-image output to the camera streamer, these show the results of the different processes |
 
 ## General System Overview
 
