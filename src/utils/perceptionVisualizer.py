@@ -183,14 +183,14 @@ class PerceptionVisualizer(WorkerProcess):
         # based on https://github.com/google-coral/pycoral/blob/master/examples/detect_image.py
         image = image_in.copy()
 
-        print(object_list)
+        #print(object_list)
 
         if not object_list:
-            print('list was empty')
+            #print('list was empty')
             return image
         else:
             for obj in object_list:
-                print(obj)
+                #print(obj)
                 w = image.shape[1]
                 h = image.shape[0]
                 ymin, xmin, ymax, xmax = obj['bounding_box']

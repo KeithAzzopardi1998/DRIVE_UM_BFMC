@@ -68,7 +68,7 @@ class ObjectDetector(WorkerProcess):
         self.interpreter.allocate_tensors()
         self.input_details = self.interpreter.get_input_details()
         self.threshold = 0.3
-        print("finished setting up OD model")
+        #print("finished setting up OD model")
         super(ObjectDetector,self).__init__(inPs, outPs)
         
     #======================= RUN =======================
@@ -128,7 +128,7 @@ class ObjectDetector(WorkerProcess):
 
         results = [self.make_result(boxes[i], classes[i], scores[i]) for i in range(count) if scores[i] >= self.threshold]
 
-        print(results)
+        #print(results)
 
         return results
 
@@ -147,9 +147,9 @@ class ObjectDetector(WorkerProcess):
             try:
                 #  ----- read the input streams ----------
                 stamps, image_in = inPs[0].recv()
-                print("LOG: going to run OD model")
+                #("LOG: going to run OD model")
                 obj_list = self.objectDetection(image_in)
-                print("LOG: detected %d objects"%len(obj_list))
+                #print("LOG: detected %d objects"%len(obj_list))
                 stamp = time.time()
                 for outP in self.outPs:
                     outP.send([[stamp], obj_list])
