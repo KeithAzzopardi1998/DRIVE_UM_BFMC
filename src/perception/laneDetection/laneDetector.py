@@ -77,6 +77,7 @@ class LaneDetector(WorkerProcess):
             previous_left_lane_coefficients = None
             previous_right_lane_coefficients = None
 
+            intersection_y = -1
 
             # Begin lane detection pipiline
             img = img_in.copy()
@@ -94,7 +95,8 @@ class LaneDetector(WorkerProcess):
             #print("LANE LINES LOG - HOUGH LINES", hough_lines)
 
             preprocessed_img = cv2.cvtColor(segmented_img,cv2.COLOR_GRAY2BGR)
-            left_lane_lines, right_lane_lines = pp.separate_lines(hough_lines, img)
+            left_lane_lines, right_lane_lines, horizontal_lines = pp.separate_lines(hough_lines, img)
+
         except Exception as e:
             print("lane preprocessing failed")
             #return np.array([[0.0,0.0], [0.0,0.0]], img_in
@@ -102,7 +104,10 @@ class LaneDetector(WorkerProcess):
             right_lane_lines = []
             preprocessed_img = img_in
 
-        #print("test")
+        #TODO : check this threshold (it was determined using a very short test)
+        if len(horizontal_lines) >= 10 :
+            intersection_y = self.check_for_intersection(horizontal_lines)
+
         try:
             left_lane_slope, left_intercept = pp.getLanesFormula(left_lane_lines)        
             smoothed_left_lane_coefficients = pp.determine_line_coefficients(left_lane_coefficients, [left_lane_slope, left_intercept])
@@ -117,9 +122,18 @@ class LaneDetector(WorkerProcess):
             print("Using saved coefficients for right coefficients", e)
             smoothed_right_lane_coefficients = pp.determine_line_coefficients(right_lane_coefficients, [0.0, 0.0])
 
-        return np.array([smoothed_left_lane_coefficients, smoothed_right_lane_coefficients]), preprocessed_img
+        return np.array([smoothed_left_lane_coefficients, smoothed_right_lane_coefficients]),intersection_y, preprocessed_img
 
-        
+    def check_for_intersection(self,lines):
+        #print("########### checking for intersection ###########")
+        #for l in lines:
+        #    print(l)
+        slope, intercept = pp.getLanesFormula(lines)
+        #print(slope)
+        #print(intercept)
+        #print("#################################################")
+        return intercept
+
     def points_from_lane_coeffs(self,line_coefficients):
         A = line_coefficients[0]
         b = line_coefficients[1]
@@ -161,15 +175,15 @@ class LaneDetector(WorkerProcess):
                 stamps, image_in = inPs[0].recv()
                 #print("LANE DETECT LOG, GOTTEN IMAGE")
                 # proncess input frame and return array [left lane coeffs, right lane coeffs]
-                lanes_coefficients,preprocessed_img = self.laneDetection(image_in)
+                lanes_coefficients, intersection_y, preprocessed_img = self.laneDetection(image_in)
                 #print("LANE DETECT LOG, GOTTEN COEFFS", lanes_coefficients)
 
                 stamp = time.time()
                 #for outP in self.outPs:
-                outPs[0].send([[stamp], lanes_coefficients])
+                outPs[0].send([[stamp], [lanes_coefficients[0],lanes_coefficients[1], intersection_y]])
                 left_lane_pts = self.points_from_lane_coeffs(lanes_coefficients[0])
                 right_lane_pts = self.points_from_lane_coeffs(lanes_coefficients[1])
-                outPs[1].send([[stamp], [left_lane_pts, right_lane_pts]])
+                outPs[1].send([[stamp], [left_lane_pts, right_lane_pts, intersection_y]])
                 outPs[2].send([[stamp], preprocessed_img])
 
             except Exception as e:

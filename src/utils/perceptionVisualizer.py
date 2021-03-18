@@ -74,13 +74,14 @@ class PerceptionVisualizer(WorkerProcess):
                 stamps, image_in = inPs[0].recv()
                 #print("LOG: received image")
                 if activate_ld:
-                    stamps, coefficients_numpy = inPs[1].recv() # every packet received should be a list with the left and right lane info
+                    # every packet received should be a list with the left and right lane info, and the y-intercept of the detected intersection
+                    stamps, lane_info = inPs[1].recv()
                     stamps, other_image = inPs[3].recv() # every packet received should be the segmented image from the lane detection
                 if activate_od:
                     stamps, objects = inPs[2].recv()
 
                 # ----- draw the lane lines --------------
-                image_ld = self.getImage_ld(image_in, coefficients_numpy) if activate_ld else image_in
+                image_ld = self.getImage_ld(image_in, lane_info) if activate_ld else image_in
 
                 # ----- draw the object bounding boxes ---
                 image_od = self.getImage_od(image_in, objects) if activate_od else image_in
@@ -166,20 +167,32 @@ class PerceptionVisualizer(WorkerProcess):
 
         new_lines = [[[int(bottom_x), int(bottom_y), int(top_x), int(top_y)]]]
         return self.draw_lines(img, new_lines, make_copy=make_copy)
+    
+    def drawIntersectionLine(self,img, y_intercept, make_copy=True):
+        _, width,_ = img.shape
+        line = [[[0, int(y_intercept), width, int(y_intercept)]]]
+        return self.draw_lines(img, line,color=[0, 255, 0], make_copy=make_copy)
 
-    def getImage_ld(self, image_in, coefficients_numpy):
+
+    def getImage_ld(self, image_in, lane_info):
         img = image_in.copy()
         vert = self.get_vertices_for_img(img)
-        left_coefficients = coefficients_numpy[0]
-        right_coefficients = coefficients_numpy[1]
+        left_coefficients = lane_info[0]
+        right_coefficients = lane_info[1]
+        intersection_y = lane_info[2]
         region_top_left = vert[0][1]
 
         lane_img_left = self.trace_lane_line_with_coefficients(img, left_coefficients, region_top_left[1], make_copy=True)
-        lane_img_both = self.trace_lane_line_with_coefficients(lane_img_left, right_coefficients, region_top_left[1], make_copy=False)
+
+        if intersection_y == -1:
+            lane_img_final = self.trace_lane_line_with_coefficients(lane_img_left, right_coefficients, region_top_left[1], make_copy=False)
+        else:
+            lane_img_both = self.trace_lane_line_with_coefficients(lane_img_left, right_coefficients, region_top_left[1], make_copy=True)
+            lane_img_final = self.drawIntersectionLine(lane_img_both,intersection_y, make_copy=False)
 
         # image1 * α + image2 * β + λ
         # image1 and image2 must be the same shape.
-        img_with_lane_weight =  cv2.addWeighted(img, 0.7, lane_img_both, 0.3, 0.0)
+        img_with_lane_weight =  cv2.addWeighted(img, 0.7, lane_img_final, 0.3, 0.0)
 
         return img_with_lane_weight
 

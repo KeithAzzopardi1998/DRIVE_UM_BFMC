@@ -37,7 +37,20 @@ class AutonomousController(WorkerProcess):
                 self.current_speed_level+=1
         
         return ret
-    
+    #======================= BASIC MOVEMENT =======================
+    def drive(self,t,speed=0.2):
+        #every tenth of a second (approx), we send a command to the Nucleo
+        #indicating the speed we want to keep
+        # "t" should be the time in seconds
+        command = {
+            'action' : 'MCTL',
+            'speed'  : speed,
+            'steerAngle' : self.current_steer_angle
+        }
+        for i in range(0,10*t):
+            self.outPs[0].send(command)
+            time.sleep(0.1)
+
     def bump(self,speed=0.25):
         command = {
             'action' : 'MCTL',
@@ -87,23 +100,11 @@ class AutonomousController(WorkerProcess):
         }
         self.outPs[0].send(command)
 
-        thr = Thread(name='LaneKeeping',target = self._lanekeep_thread, args= (self.inPs, self.outPs, ))
+        thr = Thread(name='ControlThread',target = self._control_thread, args= (self.inPs, self.outPs, ))
         thr.daemon = True
         self.threads.append(thr)
-        #thr2 = Thread(name='Bump',target = self._bump_thread, args= (self.inPs, self.outPs, ))
-        #thr2.daemon = True
-        #self.threads.append(thr2)
 
-    def _bump_thread(self, inPs, outPs):
-        while True:
-            try:
-                time.sleep(10)
-                self.bump(speed=0.2)
-            except Exception as e:
-                print("bump thread ran into exception:",e,"\n")
-                pass
-
-    def _lanekeep_thread(self, inPs, outPs):
+    def _control_thread(self, inPs, outPs):
         """Read the image from input stream, process it and send lane information
 
         Parameters
@@ -119,48 +120,43 @@ class AutonomousController(WorkerProcess):
 
         while True:
             try:
-                self.brake()
-                stamp, detected_lane_pts = inPs[0].recv()
-                print(len(detected_lane_pts))
-                steering_angle = self.calculate_steering_angle(detected_lane_pts)
-                steering_angle = np.clip(steering_angle, -21, 21)
-                new_steer_angle = float(steering_angle)
-                sa_diff = self.current_steer_angle - new_steer_angle
-                self.current_steer_angle = new_steer_angle
-                self.bump()
-                time.sleep(0.1)
-                #print("steering angle: ",steering_angle)
-                #if sa_diff > 20 or sa_diff < -20:
-                #    self.brake()
-                #    self.bump()
-                
-                #command = {
-                #    'action' : 'MCTL',
-                #    'speed'  : self.getSpeed(update=True),
-                #    'steerAngle' : self.current_steer_angle
-                #}
-                #outPs[0].send(command)
+                self.brake(speed=0.0)
+                stamp, detected_lane_info = inPs[0].recv()
+                ld_left = detected_lane_info[0]
+                ld_right = detected_lane_info[1]
+                ld_intersection = detected_lane_info[2]
+                if ld_intersection >= 250:
+                    self.routine_intersection(ld_intersection)
+                else:  
+                    self.routine_cruise(ld_left,ld_right)
 
             except Exception as e:
                 print("AutonomousController failed to obtain objects:",e,"\n")
                 pass
 
     #======================= LANE KEEPING =======================
-
+    def routine_cruise(self,left_lane_pts, right_lane_pts):
+        steering_angle = self.calculate_steering_angle(left_lane_pts,right_lane_pts)
+        steering_angle = np.clip(steering_angle, -21, 21)
+        new_steer_angle = float(steering_angle)
+        sa_diff = self.current_steer_angle - new_steer_angle
+        self.current_steer_angle = new_steer_angle
+        self.bump()
+        time.sleep(0.1)
          
-    def calculate_steering_angle(self,lanes_pts):
+    def calculate_steering_angle(self,left_lane_pts, right_lane_pts):
         #print("received lane array",lanes) 
         #print("~~~calculating steering angle~~~")
         height, width = self.img_shape
         x_offset = 0.0
 
-        left_x1, left_y1, left_x2, left_y2 = lanes_pts[0]
-        right_x1, right_y1, right_x2, right_y2 = lanes_pts[1]
+        left_x1, left_y1, left_x2, left_y2 = left_lane_pts
+        right_x1, right_y1, right_x2, right_y2 = right_lane_pts
 
         left_found = False if (left_x1==0 and left_y1==0 and left_x2==0 and left_y2==0) else True
-        if left_found: print("found left lane")
+        #if left_found: print("found left lane")
         right_found = False if (right_x1==0 and right_y1==0 and right_x2==0 and right_y2==0) else True
-        if right_found: print("found right lane")
+        #if right_found: print("found right lane")
 
         if left_found and right_found: #both lanes
             cam_mid_offset_percent = 0.02
@@ -178,4 +174,28 @@ class AutonomousController(WorkerProcess):
         steering_angle = math.atan(x_offset / y_offset) #in radians
         steering_angle = int(steering_angle * 180.0 / math.pi)
         return steering_angle
+
+    #======================= INTERSECTION HANDLING =======================
+    def routine_intersection(self, intersection_y):
+        print("routine_intersection: STOPPING AT INTERSECTION AT Y=%d",intersection_y)
+        self.brake()
+        time.sleep(3)
+
+        # TODO: how to determine these?
+        turn_left = False
+        turn_right = True
+        
+        if turn_right:
+            print("routine_intersection: making right turn")
+            self.current_steer_angle = 0.0
+            self.drive(t=2,speed=0.3)
+            self.brake()
+
+        elif turn_left:
+            pass
+        
+        time.sleep(10)
+        
+
+
 
