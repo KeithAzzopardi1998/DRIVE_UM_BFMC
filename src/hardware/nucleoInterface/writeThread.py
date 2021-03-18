@@ -29,7 +29,11 @@ class WriteThread(Thread):
         """
         while True:
             command = self.inP.recv()
+            #print("~~~~~printing command ~~~~~")
+            #print(command)
+            #print(type(command))
             command_msg = self.messageConverter.get_command(**command)
+            print(command_msg)
             self.serialCom.write(command_msg.encode('ascii'))
             self.logFile.write(command_msg)
 

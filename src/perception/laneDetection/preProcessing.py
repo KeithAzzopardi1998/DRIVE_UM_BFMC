@@ -49,24 +49,7 @@ def gaussian_blur(grayscale_img, kernel_size=5):
     '''
     return cv2.GaussianBlur(grayscale_img, (kernel_size, kernel_size), 0)
 
-def getVertices(img):
-    """This functions needs to be hard coded for
-    our resolution - might need tuning
-    """
-    img_shape = img.shape
-    height = img_shape[0]
-    width = img_shape[1]
-
-    region_top_left = (0.15*width, 0.50*height)
-    region_top_right = (0.85*width, 0.50*height)
-    region_bottom_left = (0.00*width, 1.00*height)
-    region_bottom_right = (1.00*width, 1.00*height)
-
-    vert = np.array([[region_bottom_left , region_top_left, region_top_right, region_bottom_right]], dtype=np.int32)
-
-    return vert
-
-def getROI(img):
+def getROI(img,mask_vertices):
     #define blank mask
     mask=np.zeros_like(img)
 
@@ -77,10 +60,8 @@ def getROI(img):
     else:
         ignore_mask_color = 255
 
-    vert = getVertices(img)
-
     #filling pixels inside the polygon defined by "vertices" with the fill color
-    cv2.fillPoly(mask, vert, ignore_mask_color)
+    cv2.fillPoly(mask, mask_vertices, ignore_mask_color)
 
     #return image only where mask nonzero
     return cv2.bitwise_and(img, mask)

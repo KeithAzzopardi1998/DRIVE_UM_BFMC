@@ -147,19 +147,24 @@ class PerceptionVisualizer(WorkerProcess):
     def trace_lane_line_with_coefficients(self, img, line_coefficients, top_y, make_copy=True):
         A = line_coefficients[0]
         b = line_coefficients[1]
-        #TODO added this part
         if A==0.0 and b==0.0:
             img_copy = np.copy(img) if make_copy else img
             return img_copy
 
-        img_shape = img.shape
-        bottom_y = img_shape[0] - 1
+        height, width,_ = img.shape
+        bottom_y = height - 1
         # y = Ax + b, therefore x = (y - b) / A
-        x_to_bottom_y = (bottom_y - b) / A
+        bottom_x = (bottom_y - b) / A
+        # clipping the x values
+        bottom_x = min(bottom_x, 2*width)
+        bottom_x = max(bottom_x, -1*width)
 
-        top_x_to_y = (top_y - b) / A
+        top_x = (top_y - b) / A
+        # clipping the x values
+        top_x = min(top_x, 2*width)
+        top_x = max(top_x, -1*width)
 
-        new_lines = [[[int(x_to_bottom_y), int(bottom_y), int(top_x_to_y), int(top_y)]]]
+        new_lines = [[[int(bottom_x), int(bottom_y), int(top_x), int(top_y)]]]
         return self.draw_lines(img, new_lines, make_copy=make_copy)
 
     def getImage_ld(self, image_in, coefficients_numpy):
