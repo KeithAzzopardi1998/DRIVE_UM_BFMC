@@ -121,10 +121,17 @@ class AutonomousController(WorkerProcess):
         while True:
             try:
                 self.brake(speed=0.0)
+                #information from the lane detector
                 stamp, detected_lane_info = inPs[0].recv()
                 ld_left = detected_lane_info[0]
                 ld_right = detected_lane_info[1]
                 ld_intersection = detected_lane_info[2]
+
+                #information from the object detector
+                stamp, detected_obj_info = inPs[1].recv()
+                if len(detected_lane_info)>0:
+                    ts_list = self.check_traffic_signs(detected_obj_info)
+
                 if ld_intersection >= 250:
                     self.routine_intersection(ld_intersection)
                 else:  
@@ -195,6 +202,12 @@ class AutonomousController(WorkerProcess):
             pass
         
         time.sleep(10)
+
+    #======================= TRAFFIC SIGN HANDLING =======================
+    def check_traffic_signs(self,obj_info):
+        for o in obj_info:
+            print(o)
+
         
 
 

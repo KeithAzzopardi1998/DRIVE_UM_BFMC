@@ -61,14 +61,19 @@ class ObjectDetector(WorkerProcess):
         outPs : list(Pipe)
             0 - send lane information
         """
-        #self.interpreter = tflite.Interpreter(model_path='./models/object_detector_quant_4_edgetpu.tflite',
-        #experimental_delegates=[tflite.load_delegate('libedgetpu.so.1.0')])
-        self.interpreter = tflite.Interpreter(model_path='./models/object_detector_quant_4.tflite')
-        #self.interpreter = make_interpreter('./models/object_detector_quant_4_edgetpu.tflite', device='usb')
-        self.interpreter.allocate_tensors()
-        self.input_details = self.interpreter.get_input_details()
+        #Object Detection interpreter
+        self.od_interpreter = tflite.Interpreter(model_path='./models/object_detector_quant_4.tflite')
+        self.od_interpreter.allocate_tensors()
+        self.od_input_details = self.od_interpreter.get_input_details()
         self.threshold = 0.3
-        #print("finished setting up OD model")
+
+        #Traffic Sign Recognition interpreter
+        self.tsr_interpreter = tflite.Interpreter(model_path='./models/object_recognition_quant.tflite')
+        self.tsr_interpreter.allocate_tensors()
+        self.tsr_input_details = self.tsr_interpreter.get_input_details()
+        self.tsr_output_details = self.tsr_interpreter.get_output_details()
+        self.threshold = 0.3
+        #print("finished setting up  models")
         super(ObjectDetector,self).__init__(inPs, outPs)
         
     #======================= RUN =======================
@@ -88,17 +93,25 @@ class ObjectDetector(WorkerProcess):
         thr.daemon = True
         self.threads.append(thr)
 
+    #======================= TRAFFIC SIGN RECOGNITION=======
+
     #======================= METHODS =======================
-    def set_input_tensor(self, image):
+    def set_input_od(self, image):
         """Sets the input tensor."""
-        tensor_index = self.input_details[0]['index']
-        input_tensor = self.interpreter.tensor(tensor_index)()[0]
+        tensor_index = self.od_input_details[0]['index']
+        input_tensor = self.od_interpreter.tensor(tensor_index)()[0]
+        input_tensor[:, :] = image
+    
+    def set_input_tsr(self, image):
+        """Sets the input tensor."""
+        tensor_index = self.tsr_input_details[0]['index']
+        input_tensor = self.tsr_interpreter.tensor(tensor_index)()[0]
         input_tensor[:, :] = image
 
     def get_output_tensor(self, index):
         """Returns the output tensor at the given index."""
-        output_details = self.interpreter.get_output_details()[index]
-        tensor = np.squeeze(self.interpreter.get_tensor(output_details['index']))
+        output_details = self.od_interpreter.get_output_details()[index]
+        tensor = np.squeeze(self.od_interpreter.get_tensor(output_details['index']))
         return tensor
 
     def make_result(self, box, class_id, scores):
@@ -110,16 +123,16 @@ class ObjectDetector(WorkerProcess):
         return result
 
     def objectDetection(self, img_in):
-        input_shape = self.input_details[0]['shape']
+        input_shape = self.od_input_details[0]['shape']
         _, height, width, _ = input_shape
 
         resized_image = cv2.resize(img_in, (width, height), interpolation=cv2.INTER_LINEAR)
 
         resized_image = resized_image[np.newaxis, :]
 
-        self.set_input_tensor(resized_image)
+        self.set_input_od(resized_image)
 
-        self.interpreter.invoke()
+        self.od_interpreter.invoke()
 
         boxes = np.clip(self.get_output_tensor(0), 0, 1)
         classes = self.get_output_tensor(1)
@@ -132,6 +145,22 @@ class ObjectDetector(WorkerProcess):
 
         return results
 
+    def signRecognition(self,img_in):
+        input_shape = self.tsr_input_details[0]['shape']
+        _, height, width, _ = input_shape
+
+        resized_image = cv2.resize(img_in, (width, height), interpolation=cv2.INTER_LINEAR)
+
+        resized_image = resized_image[np.newaxis, :]
+
+        self.set_input_tsr(resized_image)
+
+        self.tsr_interpreter.invoke()
+
+        output_proba = self.tsr_interpreter.get_tensor(self.tsr_output_details[0]['index'])[0]
+        tsr_class = np.argmax(output_proba)
+
+        return float("7.%d"%tsr_class)
 
     def _the_thread(self, inPs, outPs):
         """Read the image from input stream, process it and send lane information
@@ -149,6 +178,25 @@ class ObjectDetector(WorkerProcess):
                 stamps, image_in = inPs[0].recv()
                 #("LOG: going to run OD model")
                 obj_list = self.objectDetection(image_in)
+
+                #looping through the list of objects, and updating
+                #the class ID of any traffic signs
+                for o in obj_list:
+                    #the main OD model uses class 7 for traffic signs
+                    if o['class_id']== 7.0:
+                        #grab the part of the image containing the sign
+                        w = image_in.shape[1]
+                        h = image_in.shape[0]
+                        ymin, xmin, ymax, xmax = o['bounding_box']
+                        xmin = int(xmin * w)
+                        xmax = int(xmax * w)
+                        ymin = int(ymin * h)
+                        ymax = int(ymax * h)
+                        roi = image_in[ymin:ymax, xmin:xmax]
+                        #run the traffic sign recognition function,
+                        #which returns the new class ID
+                        o['class_id'] = self.signRecognition(roi)
+
                 #print("LOG: detected %d objects"%len(obj_list))
                 stamp = time.time()
                 for outP in self.outPs:

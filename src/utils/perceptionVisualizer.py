@@ -31,15 +31,23 @@ class PerceptionVisualizer(WorkerProcess):
         self.activate_ld = activate_ld
         self.activate_od = activate_od
         self.LABEL_DICT = {0: 'bike',
-                1: 'bus',
-                2: 'car',
-                3: 'motor',
-                4: 'person',
-                5: 'rider',
-                6: 'traffic_light',
-                7: 'traffic_sign',
-                8: 'train',
-                9: 'truck'
+                1.0: 'bus',
+                2.0: 'car',
+                3.0: 'motor',
+                4.0: 'person',
+                5.0: 'rider',
+                6.0: 'traffic_light',
+                7.0: 'ts_priority',
+                7.1: 'ts_stop',
+                7.2: 'ts_no_entry',
+                7.3: 'ts_one_way',
+                7.4: 'ts_crossing',
+                7.5: 'ts_fw_entry',
+                7.6: 'ts_fw_exit',
+                7.7: 'ts_parking',
+                7.8: 'ts_roundabout',
+                8.0: 'train',
+                9.0: 'truck'
             }
         self.COLORS = np.random.randint(0, 255, size=(len(self.LABEL_DICT), 3), dtype="uint8")
 
