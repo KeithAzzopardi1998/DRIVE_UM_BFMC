@@ -135,8 +135,8 @@ class PerceptionVisualizer(WorkerProcess):
         height = img_shape[0]
         width = img_shape[1]
 
-        region_top_left     = (0.00*width, 0.50*height)
-        region_top_right    = (1.00*width, 0.50*height)
+        region_top_left     = (0.00*width, 0.30*height)
+        region_top_right    = (1.00*width, 0.30*height)
         region_bottom_left  = (0.00*width, 1.00*height)
         region_bottom_right = (1.00*width, 1.00*height)
 

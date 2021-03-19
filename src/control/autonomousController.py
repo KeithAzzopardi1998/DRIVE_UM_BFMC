@@ -24,6 +24,12 @@ class AutonomousController(WorkerProcess):
                               2 : 0.15}
         self.current_speed_level = 1
         self.current_steer_angle = 0.0
+        self.angle_weights = np.array([0.8, 0.15, 0.05])
+        self.angles_to_store = 3
+        self.last_n_angles = np.zeros(self.angles_to_store)
+        self.index = 0
+        self.start_moving = True
+        self.testing_objects = False
     
     # fetches the next speed level to feed to the nucleo,
     # and updates the speed to the next level if "update"
@@ -34,9 +40,9 @@ class AutonomousController(WorkerProcess):
             if self.current_speed_level == max(self.SPEED_LEVELS.keys()):
                 self.current_speed_level = 1
             else:
-                self.current_speed_level+=1
-        
+                self.current_speed_level += 1
         return ret
+
     #======================= BASIC MOVEMENT =======================
     def drive(self,t,speed=0.2):
         #every tenth of a second (approx), we send a command to the Nucleo
@@ -47,11 +53,12 @@ class AutonomousController(WorkerProcess):
             'speed'  : speed,
             'steerAngle' : self.current_steer_angle
         }
-        for i in range(0,10*t):
+
+        for i in range(0,int(10*t)):
             self.outPs[0].send(command)
             time.sleep(0.1)
 
-    def bump(self,speed=0.25):
+    def bump(self,speed=0.21):
         command = {
             'action' : 'MCTL',
             'speed'  : speed,
@@ -65,6 +72,12 @@ class AutonomousController(WorkerProcess):
             'speed'  : speed,
             'steerAngle' : self.current_steer_angle
         }
+
+        # command = {
+        #     'action' : 'BRAK',
+        #     'steerAngle' : self.current_steer_angle
+        # }
+
         self.outPs[0].send(command)
 
     #======================= RUN =======================
@@ -120,7 +133,9 @@ class AutonomousController(WorkerProcess):
 
         while True:
             try:
-                self.brake(speed=0.0)
+                if self.start_moving == True and self.testing_objects == False:
+                    self.bump(speed=0.12)
+
                 #information from the lane detector
                 stamp, detected_lane_info = inPs[0].recv()
                 ld_left = detected_lane_info[0]
@@ -132,7 +147,7 @@ class AutonomousController(WorkerProcess):
                 if len(detected_lane_info)>0:
                     ts_list = self.check_traffic_signs(detected_obj_info)
 
-                if ld_intersection >= 250:
+                if ld_intersection >= 238:
                     self.routine_intersection(ld_intersection)
                 else:  
                     self.routine_cruise(ld_left,ld_right)
@@ -146,10 +161,30 @@ class AutonomousController(WorkerProcess):
         steering_angle = self.calculate_steering_angle(left_lane_pts,right_lane_pts)
         steering_angle = np.clip(steering_angle, -21, 21)
         new_steer_angle = float(steering_angle)
+
+        self.last_n_angles[self.index % self.angles_to_store] = new_steer_angle
+
+        weighted_angle = 0.0
+
+        for i in range(self.angles_to_store):
+            weighted_angle += self.last_n_angles[(self.index + i + 1) % self.angles_to_store] * self.angle_weights[i]
+
+        print('weighted angle', weighted_angle)
+
         sa_diff = self.current_steer_angle - new_steer_angle
-        self.current_steer_angle = new_steer_angle
-        self.bump()
+        self.current_steer_angle = float(weighted_angle) #new_steer_angle
+        if self.start_moving == True and self.testing_objects == False:
+            self.bump()
+        #self.drive(t=0.25, speed=0.22)
+        #time.sleep(0.06) #without objects
         time.sleep(0.1)
+
+        self.index += 1
+        if self.index % self.angles_to_store == 0 and self.index >= 20:
+            self.index = 0
+            self.start_moving = True
+        
+        print(self.index)
          
     def calculate_steering_angle(self,left_lane_pts, right_lane_pts):
         #print("received lane array",lanes) 
@@ -176,7 +211,8 @@ class AutonomousController(WorkerProcess):
         else: #no lanes detected
             x_offset = 0
         
-        y_offset = int(height/2)
+        #HACK: this was /2 before
+        y_offset = int(height/1.8)
 
         steering_angle = math.atan(x_offset / y_offset) #in radians
         steering_angle = int(steering_angle * 180.0 / math.pi)
@@ -192,16 +228,19 @@ class AutonomousController(WorkerProcess):
         turn_left = False
         turn_right = True
         
-        if turn_right:
-            print("routine_intersection: making right turn")
-            self.current_steer_angle = 0.0
-            self.drive(t=2,speed=0.3)
-            self.brake()
+        if self.start_moving == True and self.testing_objects == False:
+            if turn_right:
+                print("routine_intersection: making right turn")
+                self.current_steer_angle = 0.0
+                self.drive(t=1.0,speed=0.18)
+                self.current_steer_angle = 20.0
+                self.drive(t=3.0,speed=0.18)
+                self.brake()
 
-        elif turn_left:
-            pass
+            elif turn_left:
+                pass
         
-        time.sleep(10)
+        time.sleep(0.1)
 
     #======================= TRAFFIC SIGN HANDLING =======================
     def check_traffic_signs(self,obj_info):

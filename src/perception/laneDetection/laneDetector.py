@@ -26,8 +26,8 @@ class LaneDetector(WorkerProcess):
         height = self.img_shape[0]
         width = self.img_shape[1]
 
-        region_top_left = (0.15*width, 0.4*height)
-        region_top_right = (0.85*width, 0.4*height)
+        region_top_left = (0.15*width, 0.3*height)
+        region_top_right = (0.85*width, 0.3*height)
         region_bottom_left_A = (0.00*width, 1.00*height)
         region_bottom_left_B = (0.00*width, 0.8*height)
         region_bottom_right_A = (1.00*width, 1.00*height)
@@ -102,6 +102,7 @@ class LaneDetector(WorkerProcess):
             #return np.array([[0.0,0.0], [0.0,0.0]], img_in
             left_lane_lines = []
             right_lane_lines = []
+            horizontal_lines = []
             preprocessed_img = img_in
 
         #TODO : check this threshold (it was determined using a very short test)
@@ -144,7 +145,7 @@ class LaneDetector(WorkerProcess):
         height, width = self.img_shape
 
         bottom_y = height - 1
-        top_y = self.mask_vertices[0][1][1]
+        top_y = self.mask_vertices[0][2][1]
         # y = Ax + b, therefore x = (y - b) / A
         bottom_x = (bottom_y - b) / A
         # clipping the x values

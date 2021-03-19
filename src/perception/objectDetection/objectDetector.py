@@ -162,6 +162,19 @@ class ObjectDetector(WorkerProcess):
 
         return float("7.%d"%tsr_class)
 
+    def increase_brightness(self, img, value=30):
+        hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+        h, s, v = cv2.split(hsv)
+
+        lim = 255 - value
+        v[v > lim] = 255
+        v[v <= lim] += value
+
+        final_hsv = cv2.merge((h, s, v))
+        img = cv2.cvtColor(final_hsv, cv2.COLOR_HSV2RGB)
+
+        return img
+
     def _the_thread(self, inPs, outPs):
         """Read the image from input stream, process it and send lane information
 
@@ -176,8 +189,10 @@ class ObjectDetector(WorkerProcess):
             try:
                 #  ----- read the input streams ----------
                 stamps, image_in = inPs[0].recv()
-                #("LOG: going to run OD model")
-                obj_list = self.objectDetection(image_in)
+
+                image_brightened = self.increase_brightness(image_in, value=30)
+                
+                obj_list = self.objectDetection(image_brightened)
 
                 #looping through the list of objects, and updating
                 #the class ID of any traffic signs
@@ -201,6 +216,8 @@ class ObjectDetector(WorkerProcess):
                 stamp = time.time()
                 for outP in self.outPs:
                     outP.send([[stamp], obj_list])
+                    # empty = []
+                    # outP.send([[stamp], empty])
 
             except Exception as e:
                 print("ObjectDetector failed to obtain objects:",e,"\n")
