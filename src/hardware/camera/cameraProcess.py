@@ -6,7 +6,7 @@ from src.hardware.camera.cameraPublisher import CameraPublisher
 
 class CameraProcess(WorkerProcess):
     #================================ CAMERA PROCESS =====================================
-    def __init__(self, inPs, outPs, daemon = True):
+    def __init__(self, inPs, outPs, inQs, outQs, daemon = True):
         """Process that start the camera streaming.
 
         Parameters
@@ -18,11 +18,13 @@ class CameraProcess(WorkerProcess):
         daemon : bool, optional
             daemon process flag, by default True
         """
+        self.inQs = inQs
+        self.outQs = outQs
         super(CameraProcess,self).__init__( inPs, outPs, daemon = True)
 
     # ===================================== INIT TH ======================================
     def _init_threads(self):
         """Create the Camera Publisher thread and add to the list of threads.
         """
-        camTh = CameraPublisher(self.outPs) 
+        camTh = CameraPublisher(self.outPs,self.outQs) 
         self.threads.append(camTh)

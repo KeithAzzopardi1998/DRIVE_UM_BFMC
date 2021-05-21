@@ -12,11 +12,13 @@ from threading import Thread
 from multiprocessing import Process
 from src.utils.templates.threadWithStop import ThreadWithStop
 
+from queue import Queue
+
 #================================ CAMERA PROCESS =========================================
 class CameraPublisher(ThreadWithStop):
     
     #================================ CAMERA =============================================
-    def __init__(self, outPs):
+    def __init__(self, outPs, outQs):
         """The purpose of this thread is to send the camera images. It is able to record
         videos and save them locally.
         
@@ -34,6 +36,7 @@ class CameraPublisher(ThreadWithStop):
         
         #output 
         self.outPs         =   outPs
+        self.outQs         =   outQs
 
     #================================ INIT CAMERA ========================================
     def _init_camera(self):
@@ -111,6 +114,12 @@ class CameraPublisher(ThreadWithStop):
             for outP in self.outPs:
                 
                 outP.send([[stamp], data])
+                
+            for outQ in self.outQs:
+
+                outQ.put(data)
+                print("size of the queue is ",outQ.qsize())
+                print("queue object id is ",id(outQ))
 
             
             self._stream.seek(0)

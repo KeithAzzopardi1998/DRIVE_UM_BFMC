@@ -143,9 +143,9 @@ class AutonomousController(WorkerProcess):
                 ld_intersection = detected_lane_info[2]
 
                 #information from the object detector
-                stamp, detected_obj_info = inPs[1].recv()
-                if len(detected_lane_info)>0:
-                    ts_list = self.check_traffic_signs(detected_obj_info)
+                #stamp, detected_obj_info = inPs[1].recv()
+                #if len(detected_lane_info)>0:
+                #    ts_list = self.check_traffic_signs(detected_obj_info)
 
                 if ld_intersection >= 238:
                     self.routine_intersection(ld_intersection)
@@ -169,7 +169,7 @@ class AutonomousController(WorkerProcess):
         for i in range(self.angles_to_store):
             weighted_angle += self.last_n_angles[(self.index + i + 1) % self.angles_to_store] * self.angle_weights[i]
 
-        print('weighted angle', weighted_angle)
+        #print('weighted angle', weighted_angle)
 
         sa_diff = self.current_steer_angle - new_steer_angle
         self.current_steer_angle = float(weighted_angle) #new_steer_angle
@@ -184,7 +184,7 @@ class AutonomousController(WorkerProcess):
             self.index = 0
             self.start_moving = True
         
-        print(self.index)
+        #print(self.index)
          
     def calculate_steering_angle(self,left_lane_pts, right_lane_pts):
         #print("received lane array",lanes) 

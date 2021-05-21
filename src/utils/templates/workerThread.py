@@ -29,7 +29,7 @@ import threading
 from threading import Thread
 
 class WorkerThread(Thread):
-    def __init__(self, inPs, outPs):
+    def __init__(self, inQs, outQs):
         """WorkerThread is a template class for a general thread with few input and output pipes. 
         
         Parameters

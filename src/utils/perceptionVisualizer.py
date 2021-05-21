@@ -84,9 +84,10 @@ class PerceptionVisualizer(WorkerProcess):
                 if activate_ld:
                     # every packet received should be a list with the left and right lane info, and the y-intercept of the detected intersection
                     stamps, lane_info = inPs[1].recv()
-                    stamps, other_image = inPs[3].recv() # every packet received should be the segmented image from the lane detection
+                    stamps, other_image = inPs[2].recv() # every packet received should be the segmented image from the lane detection
                 if activate_od:
-                    stamps, objects = inPs[2].recv()
+                    #stamps, objects = inPs[2].recv()
+                    objects=[]
 
                 # ----- draw the lane lines --------------
                 image_ld = self.getImage_ld(image_in, lane_info) if activate_ld else image_in
